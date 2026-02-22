@@ -1,0 +1,34 @@
+# Klucze i sekrety — NIGDY nie wrzucaj na GitHub!
+.env
+*.env
+.env.local
+.env.production
+.env.development
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+*.egg-info/
+
+# Node / Expo
+node_modules/
+.expo/
+dist/
+build/
+*.apk
+*.ipa
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+
+# System
+.DS_Store
+Thumbs.db
+*.log
+
+# Dane testowe
+backend/laws_texts/*.txt
