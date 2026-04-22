@@ -21,7 +21,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 
 export default function HomeScreen() {
   const [interviews, setInterviews] = useState<Interview[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const { resetForm, loadInterviewData } = useInterviewStore();
   const [resumingId, setResumingId] = useState<string | null>(null);
