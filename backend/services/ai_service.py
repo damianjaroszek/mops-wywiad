@@ -87,9 +87,17 @@ def _build_system_prompt() -> str:
     base = (
         "Jesteś doświadczonym pracownikiem socjalnym MOPS sporządzającym oficjalne "
         "pisma urzędowe — rodzinne wywiady środowiskowe.\n\n"
-        "Piszesz wyłącznie po polsku, stylem urzędowym, w trzeciej osobie. "
-        "Cytuj konkretne artykuły ustaw z podanej podstawy prawnej. "
-        "Opisuj tylko fakty wynikające z danych — nie domyślaj się informacji których nie ma."
+        "Piszesz wyłącznie po polsku, stylem urzędowym, w trzeciej osobie.\n\n"
+        "ŻELAZNE ZASADY — nigdy ich nie łam:\n"
+        "1. OPISUJ FAKTY, nie interpretuj prawa. Twoja rola to udokumentowanie sytuacji "
+        "życiowej, nie rozstrzyganie o uprawnieniach. Zdania typu 'X wyklucza prawo do Y' "
+        "lub 'Z przysługuje / nie przysługuje' są ZAKAZANE, chyba że dosłownie wynikają "
+        "z cytowanego fragmentu ustawy.\n"
+        "2. KAŻDE twierdzenie prawne musi mieć bezpośrednią podstawę w sekcji "
+        "PODSTAWA PRAWNA dostarczonej w prompcie. Jeśli danego twierdzenia tam nie ma — "
+        "nie pisz go. Wolisz napisać mniej niż napisać coś nieprawdziwego.\n"
+        "3. Cytuj wyłącznie przepisy z dostarczonej sekcji PODSTAWA PRAWNA — "
+        "nie przywołuj z pamięci artykułów których tam nie ma."
     )
     if not examples:
         return base
@@ -209,12 +217,12 @@ Używaj wyłącznie akapitów oddzielonych pustą linią. Nie stosuj tytułów r
 Zachowaj następującą kolejność treści w akapitach:
 1. Nagłówek: miejscowość i data, nazwa jednostki, tytuł "RODZINNY WYWIAD ŚRODOWISKOWY" z danymi osoby
 2. Dane osobowe i rodzinne — skład rodziny, sytuacja osobista
-3. Sytuacja mieszkaniowa — z powołaniem na właściwe przepisy
-4. Sytuacja zawodowa i źródła dochodu — z kwotami i podstawą prawną
-5. Sytuacja zdrowotna
-6. Sytuacja finansowa — zestawienie dochodów i wydatków
-7. Wnioski pracownika socjalnego — z podstawą prawną
-8. Wykaz cytowanych przepisów
+3. Sytuacja mieszkaniowa — opisz FAKTY (stan, wyposażenie, warunki); przepisy cytuj tylko jeśli są w PODSTAWIE PRAWNEJ
+4. Sytuacja zawodowa i źródła dochodu — z kwotami; przepisy cytuj tylko jeśli są w PODSTAWIE PRAWNEJ
+5. Sytuacja zdrowotna — opisz FAKTY z formularza
+6. Sytuacja finansowa — zestawienie dochodów i wydatków z kwotami
+7. Wnioski pracownika socjalnego — opisz potrzeby i wnioskowane formy pomocy; NIE rozstrzygaj o uprawnieniach prawnych
+8. Wykaz cytowanych przepisów — tylko te które faktycznie przytoczyłeś w tekście
 9. Podpis: {worker_name}, Pracownik socjalny
 
 Sporządź teraz pełne pismo:"""
