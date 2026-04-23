@@ -14,7 +14,8 @@ logger = logging.getLogger(__name__)
 _client: Anthropic | None = None
 _style_examples: str | None = None
 
-MODEL = "claude-haiku-4-5-20251001"
+MODEL_GENERATE = "claude-haiku-4-5-20251001"
+MODEL_EDIT     = "claude-sonnet-4-6"
 MAX_TOKENS = 4096
 EXAMPLES_DIR = Path(__file__).parent.parent / "style_examples"
 
@@ -210,24 +211,65 @@ Zachowaj następującą kolejność treści w akapitach:
 Sporządź teraz pełne pismo:"""
 
 
-@retry(stop=stop_after_attempt(2), wait=wait_exponential(min=3, max=20))
-def generate_document(form_data: dict, legal_context: str, worker_name: str) -> str:
-    """Wywołuje Claude Haiku i zwraca wygenerowane pismo."""
-    system_prompt = _build_system_prompt()
-    prompt = build_prompt(form_data, legal_context, worker_name)
-    logger.info(f"Generuję pismo przez {MODEL} (system: {len(system_prompt)} znaków)")
+def _edit_document(draft: str) -> str:
+    """Drugi przebieg — Sonnet redaguje pismo pod kątem języka i stylu."""
+    edit_prompt = f"""Jesteś korektorem języka polskiego specjalizującym się w pismach urzędowych.
+
+Otrzymujesz projekt wywiadu środowiskowego napisanego przez AI. Twoim zadaniem jest WYŁĄCZNIE redakcja językowa — NIE zmieniaj faktów, danych, kwot ani treści merytorycznej.
+
+POPRAW:
+- Błędy gramatyczne (szczególnie odmiana przez przypadki, np. "jest osobą wdową" → "jest wdową")
+- Błędy w zgodności rodzaju gramatycznego (on/ona, jego/jej, zamężna/żonaty itp.)
+- Nienaturalne lub niepolskie sformułowania
+- Powtórzenia tych samych słów w sąsiednich zdaniach
+- Błędy interpunkcyjne
+- Styl — wszystko powinno brzmieć jak tekst napisany przez doświadczonego polskiego urzędnika
+
+NIE zmieniaj:
+- Żadnych danych osobowych, kwot, dat, adresów
+- Cytowań przepisów prawnych
+- Struktury akapitów i ogólnego układu pisma
+- Wniosków ani ocen pracownika socjalnego
+
+Zwróć TYLKO poprawiony tekst pisma, bez żadnych komentarzy ani wyjaśnień.
+
+PISMO DO REDAKCJI:
+{draft}"""
 
     message = get_anthropic().messages.create(
-        model=MODEL,
+        model=MODEL_EDIT,
+        max_tokens=MAX_TOKENS,
+        messages=[{"role": "user", "content": edit_prompt}],
+        temperature=0.1,
+    )
+    edited = message.content[0].text
+    logger.info(
+        f"Redakcja zakończona: {len(edited)} znaków, "
+        f"tokeny: in={message.usage.input_tokens} out={message.usage.output_tokens}"
+    )
+    return edited
+
+
+@retry(stop=stop_after_attempt(2), wait=wait_exponential(min=3, max=20))
+def generate_document(form_data: dict, legal_context: str, worker_name: str) -> str:
+    """Haiku generuje treść, Sonnet redaguje język — zwraca gotowe pismo."""
+    system_prompt = _build_system_prompt()
+    prompt = build_prompt(form_data, legal_context, worker_name)
+    logger.info(f"Generuję pismo przez {MODEL_GENERATE} (system: {len(system_prompt)} znaków)")
+
+    draft_msg = get_anthropic().messages.create(
+        model=MODEL_GENERATE,
         max_tokens=MAX_TOKENS,
         system=system_prompt,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2,
     )
-
-    document = message.content[0].text
+    draft = draft_msg.content[0].text
     logger.info(
-        f"Wygenerowano pismo: {len(document)} znaków, "
-        f"tokeny: in={message.usage.input_tokens} out={message.usage.output_tokens}"
+        f"Szkic gotowy: {len(draft)} znaków, "
+        f"tokeny: in={draft_msg.usage.input_tokens} out={draft_msg.usage.output_tokens}"
     )
+
+    logger.info(f"Redaguję przez {MODEL_EDIT}...")
+    document = _edit_document(draft)
     return document
