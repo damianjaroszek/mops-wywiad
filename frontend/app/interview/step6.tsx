@@ -2,7 +2,7 @@
  * Krok 6 — Dochody i wydatki
  */
 import React from "react";
-import { View, ScrollView, StyleSheet, Text, TouchableOpacity } from "react-native";
+import { View, ScrollView, StyleSheet, Text, TouchableOpacity, KeyboardAvoidingView, Platform } from "react-native";
 import { Button } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -62,7 +62,8 @@ export default function Step6() {
     <SafeAreaView style={cs.safe}>
       <StepHeader step={6} />
 
-      <ScrollView contentContainerStyle={cs.scroll}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        <ScrollView contentContainerStyle={cs.scroll} keyboardShouldPersistTaps="handled">
         <Text style={cs.title}>Dochody i wydatki</Text>
 
         <View style={cs.card}>
@@ -178,13 +179,14 @@ export default function Step6() {
             Po naciśnięciu „Dalej" przejdziesz do podsumowania. Sprawdź dane i wygeneruj pismo urzędowe.
           </Text>
         </View>
-      </ScrollView>
+        </ScrollView>
 
-      <View style={cs.footer}>
-        <Button mode="contained" onPress={handleNext} style={cs.nextBtn} contentStyle={{ paddingVertical: 8 }} icon="file-check">
-          Przejdź do podsumowania
-        </Button>
-      </View>
+        <View style={cs.footer}>
+          <Button mode="contained" onPress={handleNext} style={cs.nextBtn} contentStyle={{ paddingVertical: 8 }} icon="file-check">
+            Przejdź do podsumowania
+          </Button>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

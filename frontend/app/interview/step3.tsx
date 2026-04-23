@@ -2,7 +2,7 @@
  * Krok 3 — Sytuacja zawodowa
  */
 import React from "react";
-import { View, ScrollView, Text } from "react-native";
+import { View, ScrollView, Text, KeyboardAvoidingView, Platform } from "react-native";
 import { Button } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -23,7 +23,14 @@ export default function Step3() {
     <SafeAreaView style={cs.safe}>
       <StepHeader step={3} />
 
-      <ScrollView contentContainerStyle={cs.scroll}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView
+          contentContainerStyle={cs.scroll}
+          keyboardShouldPersistTaps="handled"
+        >
         <Text style={cs.title}>Sytuacja zawodowa</Text>
 
         <View style={cs.card}>
@@ -71,19 +78,20 @@ export default function Step3() {
             placeholder="np. nazwa firmy, okres zatrudnienia"
           />
         </View>
-      </ScrollView>
+        </ScrollView>
 
-      <View style={cs.footer}>
-        <Button
-          mode="contained"
-          onPress={() => { store.setCurrentStep(4); router.push("/interview/step4"); }}
-          style={cs.nextBtn}
-          contentStyle={{ paddingVertical: 8 }}
-          icon="arrow-right"
-        >
-          Dalej
-        </Button>
-      </View>
+        <View style={cs.footer}>
+          <Button
+            mode="contained"
+            onPress={() => { store.setCurrentStep(4); router.push("/interview/step4"); }}
+            style={cs.nextBtn}
+            contentStyle={{ paddingVertical: 8 }}
+            icon="arrow-right"
+          >
+            Dalej
+          </Button>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

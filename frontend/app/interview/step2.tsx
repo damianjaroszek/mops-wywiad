@@ -2,7 +2,7 @@
  * Krok 2 — Sytuacja mieszkaniowa
  */
 import React from "react";
-import { View, ScrollView, StyleSheet, Text, Switch } from "react-native";
+import { View, ScrollView, StyleSheet, Text, Switch, KeyboardAvoidingView, Platform } from "react-native";
 import { Button } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -35,7 +35,8 @@ export default function Step2() {
     <SafeAreaView style={cs.safe}>
       <StepHeader step={2} />
 
-      <ScrollView contentContainerStyle={cs.scroll}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        <ScrollView contentContainerStyle={cs.scroll} keyboardShouldPersistTaps="handled">
         <Text style={cs.title}>Sytuacja mieszkaniowa</Text>
 
         <View style={cs.card}>
@@ -106,13 +107,14 @@ export default function Step2() {
             onValueChange={(v) => store.updateHousing({ apartment_condition: v })}
           />
         </View>
-      </ScrollView>
+        </ScrollView>
 
-      <View style={cs.footer}>
-        <Button mode="contained" onPress={handleNext} style={cs.nextBtn} contentStyle={{ paddingVertical: 8 }} icon="arrow-right">
-          Dalej
-        </Button>
-      </View>
+        <View style={cs.footer}>
+          <Button mode="contained" onPress={handleNext} style={cs.nextBtn} contentStyle={{ paddingVertical: 8 }} icon="arrow-right">
+            Dalej
+          </Button>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

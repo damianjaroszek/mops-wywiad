@@ -2,7 +2,7 @@
  * Krok 1 — Dane osobowe
  */
 import React, { useState } from "react";
-import { View, ScrollView, StyleSheet, Text, TouchableOpacity } from "react-native";
+import { View, ScrollView, StyleSheet, Text, TouchableOpacity, KeyboardAvoidingView, Platform } from "react-native";
 import { Button, Checkbox } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -52,7 +52,8 @@ export default function Step1() {
     <SafeAreaView style={cs.safe}>
       <StepHeader step={1} />
 
-      <ScrollView contentContainerStyle={cs.scroll} keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        <ScrollView contentContainerStyle={cs.scroll} keyboardShouldPersistTaps="handled">
         <Text style={cs.title}>Dane osobowe</Text>
 
         <View style={styles.fakeSection}>
@@ -116,13 +117,14 @@ export default function Step1() {
             labelStyle={styles.checkboxLabel}
           />
         ))}
-      </ScrollView>
+        </ScrollView>
 
-      <View style={cs.footer}>
-        <Button mode="contained" onPress={handleNext} style={cs.nextBtn} contentStyle={{ paddingVertical: 8 }} icon="arrow-right">
-          Dalej
-        </Button>
-      </View>
+        <View style={cs.footer}>
+          <Button mode="contained" onPress={handleNext} style={cs.nextBtn} contentStyle={{ paddingVertical: 8 }} icon="arrow-right">
+            Dalej
+          </Button>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
