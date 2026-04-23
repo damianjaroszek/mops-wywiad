@@ -219,7 +219,7 @@ export default function ResultScreen() {
                   {revising ? "Poprawiam..." : "Popraw pismo"}
                 </Button>
               </View>
-            </KeyboardAvoidingView>
+            </View>
           )}
         </>
       ) : (
