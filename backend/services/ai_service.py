@@ -237,10 +237,13 @@ INSTRUKCJA PRACOWNIKA:
 {instruction}
 
 ZASADY:
+- Zmieniaj WYŁĄCZNIE zdanie lub akapit którego dotyczy instrukcja — reszta tekstu musi pozostać bez zmian, słowo w słowo
 - Wykonaj DOKŁADNIE to o co prosi pracownik — nie więcej, nie mniej
 - Zachowaj styl, formę i język całego pisma
-- Nie zmieniaj fragmentów których instrukcja nie dotyczy
-- Zwróć TYLKO pełny poprawiony tekst pisma, bez komentarzy
+- Każdy zmieniony fragment OZNACZ znacznikami: wstaw « bezpośrednio przed zmianą i » bezpośrednio po zmianie
+  Przykład: „...poprzedni tekst... «zmienione zdanie lub akapit.» ...dalszy tekst..."
+- Jeśli zmieniasz kilka niezależnych miejsc, każde oznacz osobną parą «»
+- Zwróć TYLKO pełny poprawiony tekst pisma ze znacznikami «», bez żadnych komentarzy
 
 AKTUALNE PISMO:
 {current_document}

@@ -16,6 +16,7 @@ export default function ResultScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const store = useInterviewStore();
   const [document, setDocument] = useState(store.generatedDocument || "");
+  const [markedDocument, setMarkedDocument] = useState<string | null>(null);
   const [lawRefs, setLawRefs] = useState<string[]>(store.lawReferences || []);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -73,13 +74,17 @@ export default function ResultScreen() {
     }
   };
 
+  const stripMarkers = (text: string) => text.replace(/[«»]/g, "");
+
   const handleRevise = async () => {
     if (!instruction.trim() || !interviewId || !document) return;
     setRevising(true);
     try {
       const result = await reviseDocument(interviewId, instruction.trim(), document);
-      setDocument(result.document);
-      store.setGeneratedDocument(result.document, lawRefs);
+      const clean = stripMarkers(result.document);
+      setMarkedDocument(result.document);
+      setDocument(clean);
+      store.setGeneratedDocument(clean, lawRefs);
       setInstruction("");
       setReviseOpen(false);
     } catch (e: any) {
@@ -87,6 +92,24 @@ export default function ResultScreen() {
     } finally {
       setRevising(false);
     }
+  };
+
+  const renderDocumentText = (text: string) => {
+    const parts = text.split(/(«[^»]*»)/g);
+    return (
+      <Text style={styles.docText}>
+        {parts.map((part, i) => {
+          if (part.startsWith("«") && part.endsWith("»")) {
+            return (
+              <Text key={i} style={styles.highlighted}>
+                {part.slice(1, -1)}
+              </Text>
+            );
+          }
+          return part;
+        })}
+      </Text>
+    );
   };
 
   if (loading) {
@@ -117,7 +140,17 @@ export default function ResultScreen() {
               <Text style={styles.successText}>✓ Pismo wygenerowane pomyślnie</Text>
             </View>
             <View style={styles.docCard}>
-              <Text style={styles.docText}>{document}</Text>
+              {markedDocument
+                ? renderDocumentText(markedDocument)
+                : renderDocumentText(document)}
+              {markedDocument && (
+                <TouchableOpacity
+                  onPress={() => setMarkedDocument(null)}
+                  style={styles.clearHighlightBtn}
+                >
+                  <Text style={styles.clearHighlightText}>Ukryj podświetlenie zmian</Text>
+                </TouchableOpacity>
+              )}
             </View>
             {lawRefs.length > 0 && (
               <View style={styles.refsCard}>
@@ -157,7 +190,7 @@ export default function ResultScreen() {
                   style={styles.revisePanelInput}
                   value={instruction}
                   onChangeText={setInstruction}
-                  placeholder='np. "Podkreśl że klient pali węglem, jest środek zimy"'
+                  placeholder='np. "zmień zdanie o ogrzewaniu — klient pali węglem"'
                   placeholderTextColor={colors.text.disabled}
                   multiline
                   numberOfLines={3}
@@ -242,4 +275,7 @@ const styles = StyleSheet.create({
   reviseSendBtn:     { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.secondary, justifyContent: "center", alignItems: "center" },
   reviseSendBtnDisabled: { backgroundColor: colors.border },
   reviseSendIcon:    { color: "#fff", fontSize: 18, marginLeft: 2 },
+  highlighted:       { backgroundColor: "#FFF59D", color: colors.text.primary, fontWeight: "700" },
+  clearHighlightBtn: { marginTop: 12, alignSelf: "flex-end" },
+  clearHighlightText:{ fontSize: 11, color: colors.text.disabled, textDecorationLine: "underline" },
 });
