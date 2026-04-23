@@ -147,28 +147,14 @@ export default function ResultScreen() {
               <Text style={styles.successText}>✓ Pismo wygenerowane pomyślnie</Text>
             </View>
             <View style={styles.docCard}>
-              {markedDocument ? (
-                <>
-                  {renderDocumentText(markedDocument)}
-                  <TouchableOpacity
-                    onPress={() => setMarkedDocument(null)}
-                    style={styles.clearHighlightBtn}
-                  >
-                    <Text style={styles.clearHighlightText}>Ukryj podświetlenie zmian</Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <TextInput
-                  editable={false}
-                  multiline
-                  style={styles.docInput}
-                  value={document}
-                  underlineColorAndroid="transparent"
-                  onSelectionChange={(e) => {
-                    const { start, end } = e.nativeEvent.selection;
-                    if (start !== end) setSelectedText(document.slice(start, end));
-                  }}
-                />
+              {renderDocumentText(markedDocument ?? document)}
+              {markedDocument && (
+                <TouchableOpacity
+                  onPress={() => setMarkedDocument(null)}
+                  style={styles.clearHighlightBtn}
+                >
+                  <Text style={styles.clearHighlightText}>Ukryj podświetlenie zmian</Text>
+                </TouchableOpacity>
               )}
             </View>
             {lawRefs.length > 0 && (
@@ -185,7 +171,7 @@ export default function ResultScreen() {
           {!reviseOpen && (
             <FAB
               icon="pencil"
-              label={selectedText ? "Popraw zaznaczone" : "Popraw"}
+              label="Popraw"
               style={styles.fab}
               onPress={() => setReviseOpen(true)}
               color="#fff"
@@ -204,23 +190,23 @@ export default function ResultScreen() {
                   <Text style={styles.revisePanelClose}>✕</Text>
                 </TouchableOpacity>
               </View>
-              {selectedText ? (
-                <View style={styles.fragmentChip}>
-                  <Text style={styles.fragmentChipText} numberOfLines={3}>{selectedText}</Text>
-                  <TouchableOpacity
-                    onPress={() => setSelectedText("")}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Text style={styles.fragmentChipClear}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : null}
+              <TextInput
+                style={styles.fragmentInput}
+                value={selectedText}
+                onChangeText={setSelectedText}
+                placeholder="Wklej fragment który chcesz zmienić (opcjonalnie)"
+                placeholderTextColor={colors.text.disabled}
+                multiline
+                numberOfLines={2}
+                textAlignVertical="top"
+                editable={!revising}
+              />
               <View style={styles.revisePanelRow}>
                 <TextInput
                   style={styles.revisePanelInput}
                   value={instruction}
                   onChangeText={setInstruction}
-                  placeholder={selectedText ? "Co zmienić w zaznaczonym fragmencie?" : 'np. "zmień zdanie o ogrzewaniu — klient pali węglem"'}
+                  placeholder='Co zmienić?  np. "klient ogrzewa węglem"'
                   placeholderTextColor={colors.text.disabled}
                   multiline
                   numberOfLines={3}
@@ -308,8 +294,5 @@ const styles = StyleSheet.create({
   highlighted:        { backgroundColor: "#FFEE58", color: "#1A1A1A", fontWeight: "700" },
   clearHighlightBtn:  { marginTop: 12, alignSelf: "flex-end" },
   clearHighlightText: { fontSize: 11, color: colors.text.disabled, textDecorationLine: "underline" },
-  docInput:           { fontFamily: "monospace", fontSize: 12, lineHeight: 20, color: colors.text.primary, textAlignVertical: "top", padding: 0 },
-  fragmentChip:       { flexDirection: "row", alignItems: "flex-start", backgroundColor: colors.primaryLight, borderLeftWidth: 3, borderLeftColor: colors.primary, borderRadius: 4, padding: spacing.sm, marginBottom: spacing.xs, gap: spacing.xs },
-  fragmentChipText:   { flex: 1, fontSize: 11, color: colors.text.secondary, fontStyle: "italic", lineHeight: 16 },
-  fragmentChipClear:  { fontSize: 14, color: colors.text.disabled, paddingTop: 1 },
+  fragmentInput:      { borderWidth: 1, borderColor: colors.primaryLight, borderRadius: 6, padding: spacing.sm, fontSize: fontSize.sm, color: colors.text.primary, minHeight: 44, maxHeight: 80, backgroundColor: colors.primaryLight, textAlignVertical: "top", marginBottom: spacing.xs },
 });
