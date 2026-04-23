@@ -97,7 +97,7 @@ export default function ResultScreen() {
   const renderDocumentText = (text: string) => {
     const parts = text.split(/(«[^»]*»)/g);
     return (
-      <Text style={styles.docText}>
+      <Text style={styles.docText} selectable>
         {parts.map((part, i) => {
           if (part.startsWith("«") && part.endsWith("»")) {
             return (
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
   reviseSendBtn:     { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.secondary, justifyContent: "center", alignItems: "center" },
   reviseSendBtnDisabled: { backgroundColor: colors.border },
   reviseSendIcon:    { color: "#fff", fontSize: 18, marginLeft: 2 },
-  highlighted:       { backgroundColor: "#FFF59D", color: colors.text.primary, fontWeight: "700" },
+  highlighted:       { backgroundColor: "#FFEE58", color: "#1A1A1A", fontWeight: "700" },
   clearHighlightBtn: { marginTop: 12, alignSelf: "flex-end" },
   clearHighlightText:{ fontSize: 11, color: colors.text.disabled, textDecorationLine: "underline" },
 });
