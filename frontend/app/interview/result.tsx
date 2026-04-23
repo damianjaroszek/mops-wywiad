@@ -2,8 +2,8 @@
  * Ekran wynikowy — podgląd i eksport wygenerowanego pisma
  */
 import React, { useEffect, useState } from "react";
-import { View, ScrollView, StyleSheet, Text, TouchableOpacity, Share, Alert, ActivityIndicator, TextInput } from "react-native";
-import { Button, Divider, Chip } from "react-native-paper";
+import { View, ScrollView, StyleSheet, Text, TouchableOpacity, Share, Alert, ActivityIndicator, TextInput, Modal, KeyboardAvoidingView, Platform } from "react-native";
+import { Button, Divider, Chip, FAB } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Print from "expo-print";
@@ -21,6 +21,7 @@ export default function ResultScreen() {
   const [exporting, setExporting] = useState(false);
   const [revising, setRevising] = useState(false);
   const [instruction, setInstruction] = useState("");
+  const [reviseModalVisible, setReviseModalVisible] = useState(false);
   const interviewId = id || store.interviewId;
 
   useEffect(() => {
@@ -93,6 +94,7 @@ export default function ResultScreen() {
       setDocument(result.document);
       store.setGeneratedDocument(result.document, lawRefs);
       setInstruction("");
+      setReviseModalVisible(false);
     } catch (e: any) {
       Alert.alert("Błąd korekty", e.message);
     } finally {
@@ -141,36 +143,71 @@ export default function ResultScreen() {
                 ))}
               </View>
             )}
-
-            <View style={styles.reviseCard}>
-              <Text style={styles.reviseTitle}>Popraw pismo</Text>
-              <Text style={styles.reviseHint}>
-                Opisz co zmienić lub uzupełnić — np. "Podkreśl że klient pali węglem, jest zima" albo "Usuń wzmiankę o konflikcie z sąsiadami"
-              </Text>
-              <TextInput
-                style={styles.reviseInput}
-                value={instruction}
-                onChangeText={setInstruction}
-                placeholder="Co poprawić lub dodać?"
-                placeholderTextColor={colors.text.disabled}
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-                editable={!revising}
-              />
-              <Button
-                mode="contained"
-                onPress={handleRevise}
-                loading={revising}
-                disabled={revising || !instruction.trim()}
-                icon="pencil"
-                style={styles.reviseBtn}
-                contentStyle={{ paddingVertical: 6 }}
-              >
-                {revising ? "Poprawiam pismo..." : "Popraw pismo"}
-              </Button>
-            </View>
           </ScrollView>
+
+          {/* FAB — pływający przycisk korekty */}
+          <FAB
+            icon="pencil"
+            label="Popraw"
+            style={styles.fab}
+            onPress={() => setReviseModalVisible(true)}
+            color="#fff"
+          />
+
+          {/* Modal korekty */}
+          <Modal
+            visible={reviseModalVisible}
+            transparent
+            animationType="slide"
+            onRequestClose={() => !revising && setReviseModalVisible(false)}
+          >
+            <TouchableOpacity
+              style={styles.modalOverlay}
+              activeOpacity={1}
+              onPress={() => !revising && setReviseModalVisible(false)}
+            />
+            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalWrapper}>
+              <View style={styles.modalSheet}>
+                <View style={styles.modalHandle} />
+                <Text style={styles.modalTitle}>Popraw pismo</Text>
+                <Text style={styles.modalHint}>
+                  Opisz co zmienić lub uzupełnić, np. "Podkreśl że klient pali węglem, jest środek zimy"
+                </Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={instruction}
+                  onChangeText={setInstruction}
+                  placeholder="Co poprawić lub dodać?"
+                  placeholderTextColor={colors.text.disabled}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                  editable={!revising}
+                  autoFocus
+                />
+                <View style={styles.modalActions}>
+                  <Button
+                    mode="outlined"
+                    onPress={() => setReviseModalVisible(false)}
+                    disabled={revising}
+                    style={styles.modalCancelBtn}
+                  >
+                    Anuluj
+                  </Button>
+                  <Button
+                    mode="contained"
+                    onPress={handleRevise}
+                    loading={revising}
+                    disabled={revising || !instruction.trim()}
+                    icon="check"
+                    style={styles.modalSubmitBtn}
+                  >
+                    {revising ? "Poprawiam..." : "Popraw"}
+                  </Button>
+                </View>
+              </View>
+            </KeyboardAvoidingView>
+          </Modal>
 
           <View style={styles.footer}>
             <Button
@@ -225,9 +262,15 @@ const styles = StyleSheet.create({
   newBtn: { flex: 1 },
   noDoc: { flex: 1, justifyContent: "center", alignItems: "center", padding: spacing.xl, gap: spacing.md },
   noDocText: { fontSize: fontSize.lg, color: colors.text.secondary },
-  reviseCard: { backgroundColor: colors.surface, borderRadius: 12, padding: spacing.md, marginTop: spacing.md, ...shadow.sm },
-  reviseTitle: { fontSize: fontSize.md, fontWeight: "700", color: colors.primary, marginBottom: spacing.xs },
-  reviseHint: { fontSize: fontSize.sm, color: colors.text.secondary, marginBottom: spacing.sm, lineHeight: 18 },
-  reviseInput: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: spacing.sm, fontSize: fontSize.sm, color: colors.text.primary, minHeight: 80, backgroundColor: colors.background, marginBottom: spacing.sm },
-  reviseBtn: { backgroundColor: colors.secondary },
+  fab: { position: "absolute", right: spacing.md, bottom: 100, backgroundColor: colors.secondary },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
+  modalWrapper: { justifyContent: "flex-end" },
+  modalSheet: { backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: spacing.lg, paddingBottom: spacing.xl },
+  modalHandle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: "center", marginBottom: spacing.md },
+  modalTitle: { fontSize: fontSize.lg, fontWeight: "700", color: colors.text.primary, marginBottom: spacing.xs },
+  modalHint: { fontSize: fontSize.sm, color: colors.text.secondary, marginBottom: spacing.md, lineHeight: 18 },
+  modalInput: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: spacing.sm, fontSize: fontSize.sm, color: colors.text.primary, minHeight: 100, backgroundColor: colors.background, marginBottom: spacing.md, textAlignVertical: "top" },
+  modalActions: { flexDirection: "row", gap: spacing.sm },
+  modalCancelBtn: { flex: 1 },
+  modalSubmitBtn: { flex: 2, backgroundColor: colors.secondary },
 });
