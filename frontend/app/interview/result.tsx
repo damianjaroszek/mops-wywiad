@@ -195,29 +195,30 @@ export default function ResultScreen() {
                     <Text style={styles.revisePanelClose}>✕</Text>
                   </TouchableOpacity>
                 </View>
-                <TextInput
-                  style={styles.revisePanelInput}
-                  value={instruction}
-                  onChangeText={setInstruction}
-                  placeholder='np. "Podkreśl że klient pali węglem, jest środek zimy"'
-                  placeholderTextColor={colors.text.disabled}
-                  multiline
-                  numberOfLines={3}
-                  textAlignVertical="top"
-                  editable={!revising}
-                  autoFocus
-                />
-                <Button
-                  mode="contained"
-                  onPress={handleRevise}
-                  loading={revising}
-                  disabled={revising || !instruction.trim()}
-                  icon="check"
-                  style={styles.revisePanelBtn}
-                  contentStyle={{ paddingVertical: 6 }}
-                >
-                  {revising ? "Poprawiam..." : "Popraw pismo"}
-                </Button>
+                <View style={styles.revisePanelRow}>
+                  <TextInput
+                    style={styles.revisePanelInput}
+                    value={instruction}
+                    onChangeText={setInstruction}
+                    placeholder='np. "Podkreśl że klient pali węglem, jest środek zimy"'
+                    placeholderTextColor={colors.text.disabled}
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                    editable={!revising}
+                    autoFocus
+                  />
+                  <TouchableOpacity
+                    style={[styles.reviseSendBtn, (revising || !instruction.trim()) && styles.reviseSendBtnDisabled]}
+                    onPress={handleRevise}
+                    disabled={revising || !instruction.trim()}
+                  >
+                    {revising
+                      ? <ActivityIndicator size="small" color="#fff" />
+                      : <Text style={styles.reviseSendIcon}>➤</Text>
+                    }
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           )}
@@ -259,6 +260,9 @@ const styles = StyleSheet.create({
   revisePanelHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   revisePanelTitle: { fontSize: fontSize.md, fontWeight: "700", color: colors.primary },
   revisePanelClose: { fontSize: 18, color: colors.text.secondary, paddingHorizontal: spacing.xs },
-  revisePanelInput: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: spacing.sm, fontSize: fontSize.sm, color: colors.text.primary, minHeight: 75, backgroundColor: colors.background, textAlignVertical: "top" },
-  revisePanelBtn: { backgroundColor: colors.secondary },
+  revisePanelRow: { flexDirection: "row", alignItems: "flex-end", gap: spacing.xs },
+  revisePanelInput: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: spacing.sm, fontSize: fontSize.sm, color: colors.text.primary, minHeight: 60, maxHeight: 100, backgroundColor: colors.background, textAlignVertical: "top" },
+  reviseSendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.secondary, justifyContent: "center", alignItems: "center" },
+  reviseSendBtnDisabled: { backgroundColor: colors.border },
+  reviseSendIcon: { color: "#fff", fontSize: 18, marginLeft: 2 },
 });
