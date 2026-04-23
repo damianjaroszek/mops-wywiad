@@ -191,38 +191,21 @@ SYTUACJA ZDROWOTNA:
 ━━━ PODSTAWA PRAWNA (fragmenty ustaw) ━━━
 {legal_context}
 
-━━━ WYMAGANA STRUKTURA PISMA ━━━
+━━━ WYMAGANA FORMA PISMA ━━━
 
-[miejscowość, data w formacie: DD miesiąca RRRR r.]
+Pismo ma być napisane CIĄGŁYM TEKSTEM — jak wypracowanie, bez podziału na numerowane sekcje ani nagłówki.
+Używaj wyłącznie akapitów oddzielonych pustą linią. Nie stosuj tytułów rozdziałów ani numeracji (I., II., III. itd.).
 
-[nazwa jednostki MOPS / GOPS]
-
-RODZINNY WYWIAD ŚRODOWISKOWY
-przeprowadzony z [pełne imię i nazwisko], ur. [data], zam. [adres]
-
-I. DANE OSOBOWE I RODZINNE
-[opis]
-
-II. SYTUACJA MIESZKANIOWA
-[opis z powołaniem na właściwe przepisy]
-
-III. SYTUACJA ZAWODOWA I ŹRÓDŁA DOCHODU
-[opis z kwotami i podstawą prawną]
-
-IV. SYTUACJA ZDROWOTNA
-[opis]
-
-V. SYTUACJA FINANSOWA
-[zestawienie dochodów i wydatków]
-
-VI. WNIOSKI PRACOWNIKA SOCJALNEGO
-[konkretne wnioski co do formy i zakresu pomocy, z podstawą prawną]
-
-VII. PODSTAWA PRAWNA
-[lista cytowanych przepisów]
-
-                                        {worker_name}
-                                        Pracownik socjalny
+Zachowaj następującą kolejność treści w akapitach:
+1. Nagłówek: miejscowość i data, nazwa jednostki, tytuł "RODZINNY WYWIAD ŚRODOWISKOWY" z danymi osoby
+2. Dane osobowe i rodzinne — skład rodziny, sytuacja osobista
+3. Sytuacja mieszkaniowa — z powołaniem na właściwe przepisy
+4. Sytuacja zawodowa i źródła dochodu — z kwotami i podstawą prawną
+5. Sytuacja zdrowotna
+6. Sytuacja finansowa — zestawienie dochodów i wydatków
+7. Wnioski pracownika socjalnego — z podstawą prawną
+8. Wykaz cytowanych przepisów
+9. Podpis: {worker_name}, Pracownik socjalny
 
 Sporządź teraz pełne pismo:"""
 
