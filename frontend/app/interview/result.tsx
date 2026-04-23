@@ -8,6 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
+import * as Clipboard from "expo-clipboard";
 import { useInterviewStore } from "@/store/interviewStore";
 import { getInterview, reviseDocument } from "@/services/api";
 import { colors, spacing, fontSize, shadow } from "@/constants/theme";
@@ -76,6 +77,21 @@ export default function ResultScreen() {
   };
 
   const stripMarkers = (text: string) => text.replace(/[«»]/g, "");
+
+  const handleOpenRevise = async () => {
+    try {
+      const clip = await Clipboard.getStringAsync();
+      const trimmed = clip?.trim() ?? "";
+      if (trimmed.length > 3 && document.includes(trimmed)) {
+        setSelectedText(trimmed);
+      } else {
+        setSelectedText("");
+      }
+    } catch {
+      setSelectedText("");
+    }
+    setReviseOpen(true);
+  };
 
   const handleRevise = async () => {
     if (!instruction.trim() || !interviewId || !document) return;
@@ -173,7 +189,7 @@ export default function ResultScreen() {
               icon="pencil"
               label="Popraw"
               style={styles.fab}
-              onPress={() => setReviseOpen(true)}
+              onPress={handleOpenRevise}
               color="#fff"
             />
           )}
