@@ -215,15 +215,16 @@ Pismo ma być napisane CIĄGŁYM TEKSTEM — jak wypracowanie, bez podziału na 
 Używaj wyłącznie akapitów oddzielonych pustą linią. Nie stosuj tytułów rozdziałów ani numeracji (I., II., III. itd.).
 
 Zachowaj następującą kolejność treści w akapitach:
-1. Nagłówek: miejscowość i data, nazwa jednostki, tytuł "RODZINNY WYWIAD ŚRODOWISKOWY" z danymi osoby
-2. Dane osobowe i rodzinne — skład rodziny, sytuacja osobista
-3. Sytuacja mieszkaniowa — opisz FAKTY (stan, wyposażenie, warunki); przepisy cytuj tylko jeśli są w PODSTAWIE PRAWNEJ
-4. Sytuacja zawodowa i źródła dochodu — z kwotami; przepisy cytuj tylko jeśli są w PODSTAWIE PRAWNEJ
-5. Sytuacja zdrowotna — opisz FAKTY z formularza
-6. Sytuacja finansowa — zestawienie dochodów i wydatków z kwotami
-7. Wnioski pracownika socjalnego — opisz potrzeby i wnioskowane formy pomocy; NIE rozstrzygaj o uprawnieniach prawnych
-8. Wykaz cytowanych przepisów — tylko te które faktycznie przytoczyłeś w tekście
-9. Podpis: {worker_name}, Pracownik socjalny
+1. Dane osobowe i rodzinne — skład rodziny, sytuacja osobista
+2. Sytuacja mieszkaniowa — opisz FAKTY (stan, wyposażenie, warunki); przepisy cytuj tylko jeśli są w PODSTAWIE PRAWNEJ
+3. Sytuacja zawodowa i źródła dochodu — z kwotami; przepisy cytuj tylko jeśli są w PODSTAWIE PRAWNEJ
+4. Sytuacja zdrowotna — opisz FAKTY z formularza
+5. Sytuacja finansowa — zestawienie dochodów i wydatków z kwotami
+6. Wnioski pracownika socjalnego — opisz potrzeby i wnioskowane formy pomocy; NIE rozstrzygaj o uprawnieniach prawnych
+7. Wykaz cytowanych przepisów — tylko te które faktycznie przytoczyłeś w tekście
+8. Podpis: {worker_name}, Pracownik socjalny
+
+NIE zaczynaj od nagłówka z miejscowością, datą, nazwą ośrodka ani tytułem "RODZINNY WYWIAD ŚRODOWISKOWY". Zacznij od razu od pierwszego akapitu opisowego.
 
 Sporządź teraz pełne pismo:"""
 
