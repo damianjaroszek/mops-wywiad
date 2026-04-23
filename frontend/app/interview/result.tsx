@@ -1,9 +1,9 @@
 /**
  * Ekran wynikowy — podgląd i eksport wygenerowanego pisma
  */
-import React, { useEffect, useRef, useState } from "react";
-import { View, ScrollView, StyleSheet, Text, TouchableOpacity, Share, Alert, ActivityIndicator, TextInput, Keyboard, KeyboardEvent } from "react-native";
-import { Button, Divider, Chip, FAB } from "react-native-paper";
+import React, { useEffect, useState } from "react";
+import { View, ScrollView, StyleSheet, Text, TouchableOpacity, Share, Alert, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform } from "react-native";
+import { Button, FAB } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Print from "expo-print";
@@ -21,15 +21,8 @@ export default function ResultScreen() {
   const [exporting, setExporting] = useState(false);
   const [revising, setRevising] = useState(false);
   const [instruction, setInstruction] = useState("");
-  const [reviseModalVisible, setReviseModalVisible] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [reviseOpen, setReviseOpen] = useState(false);
   const interviewId = id || store.interviewId;
-
-  useEffect(() => {
-    const show = Keyboard.addListener("keyboardDidShow", (e: KeyboardEvent) => setKeyboardHeight(e.endCoordinates.height));
-    const hide = Keyboard.addListener("keyboardDidHide", () => setKeyboardHeight(0));
-    return () => { show.remove(); hide.remove(); };
-  }, []);
 
   useEffect(() => {
     if (id && !store.generatedDocument) {
@@ -51,25 +44,12 @@ export default function ResultScreen() {
     setExporting(true);
     try {
       const html = `
-        <!DOCTYPE html>
-        <html lang="pl">
-        <head>
-          <meta charset="UTF-8">
-          <style>
-            body { font-family: Arial, sans-serif; font-size: 12pt; line-height: 1.6; margin: 2cm; color: #000; }
-            h1 { font-size: 14pt; text-align: center; text-transform: uppercase; margin-bottom: 24pt; }
-            pre { white-space: pre-wrap; font-family: Arial, sans-serif; font-size: 11pt; }
-            .refs { margin-top: 24pt; border-top: 1pt solid #999; padding-top: 12pt; }
-            .refs h2 { font-size: 11pt; }
-            .refs ul { font-size: 10pt; }
-          </style>
-        </head>
-        <body>
-          <pre>${document.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
-          ${lawRefs.length > 0 ? `<div class="refs"><h2>Użyte przepisy prawne:</h2><ul>${lawRefs.map((r) => `<li>${r}</li>`).join("")}</ul></div>` : ""}
-        </body>
-        </html>
-      `;
+        <!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8">
+        <style>body{font-family:Arial,sans-serif;font-size:12pt;line-height:1.6;margin:2cm;color:#000;}
+        pre{white-space:pre-wrap;font-family:Arial,sans-serif;font-size:11pt;}</style></head>
+        <body><pre>${document.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>
+        ${lawRefs.length > 0 ? `<div style="margin-top:24pt;border-top:1pt solid #999;padding-top:12pt"><p><b>Użyte przepisy:</b></p><ul>${lawRefs.map((r) => `<li>${r}</li>`).join("")}</ul></div>` : ""}
+        </body></html>`;
       const { uri } = await Print.printToFileAsync({ html, base64: false });
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
@@ -101,17 +81,12 @@ export default function ResultScreen() {
       setDocument(result.document);
       store.setGeneratedDocument(result.document, lawRefs);
       setInstruction("");
-      setReviseModalVisible(false);
+      setReviseOpen(false);
     } catch (e: any) {
       Alert.alert("Błąd korekty", e.message);
     } finally {
       setRevising(false);
     }
-  };
-
-  const handleNew = () => {
-    store.resetForm();
-    router.replace("/");
   };
 
   if (loading) {
@@ -132,16 +107,18 @@ export default function ResultScreen() {
       </View>
 
       {document ? (
-        <>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          {/* Dokument — scrollowalny zawsze */}
           <ScrollView contentContainerStyle={styles.scroll}>
             <View style={styles.successBanner}>
               <Text style={styles.successText}>✓ Pismo wygenerowane pomyślnie</Text>
             </View>
-
             <View style={styles.docCard}>
               <Text style={styles.docText}>{document}</Text>
             </View>
-
             {lawRefs.length > 0 && (
               <View style={styles.refsCard}>
                 <Text style={styles.refsTitle}>Użyte przepisy prawne ({lawRefs.length})</Text>
@@ -152,77 +129,78 @@ export default function ResultScreen() {
             )}
           </ScrollView>
 
-          {/* FAB — pływający przycisk korekty, ukrywa się gdy panel otwarty */}
-          {!reviseModalVisible && (
+          {/* FAB — widoczny gdy panel korekty zamknięty */}
+          {!reviseOpen && (
             <FAB
               icon="pencil"
               label="Popraw"
               style={styles.fab}
-              onPress={() => setReviseModalVisible(true)}
+              onPress={() => setReviseOpen(true)}
               color="#fff"
             />
           )}
 
-          <View style={styles.footer}>
-            <Button
-              mode="contained"
-              onPress={handleExportPDF}
-              loading={exporting}
-              disabled={exporting}
-              icon="file-pdf-box"
-              style={styles.pdfBtn}
-              contentStyle={{ paddingVertical: 8 }}
-            >
-              Eksportuj PDF
-            </Button>
-            <View style={styles.footerRow}>
-              <Button mode="outlined" onPress={handleShare} icon="share" style={styles.shareBtn}>
-                Udostępnij tekst
-              </Button>
-              <Button mode="outlined" onPress={handleNew} icon="plus" style={styles.newBtn}>
-                Nowy wywiad
-              </Button>
+          {/* Stopka — przyciski eksportu lub panel korekty */}
+          {reviseOpen ? (
+            <View style={styles.revisePanel}>
+              <View style={styles.revisePanelHeader}>
+                <Text style={styles.revisePanelTitle}>Popraw pismo</Text>
+                <TouchableOpacity
+                  onPress={() => !revising && setReviseOpen(false)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Text style={styles.revisePanelClose}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.revisePanelRow}>
+                <TextInput
+                  style={styles.revisePanelInput}
+                  value={instruction}
+                  onChangeText={setInstruction}
+                  placeholder='np. "Podkreśl że klient pali węglem, jest środek zimy"'
+                  placeholderTextColor={colors.text.disabled}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                  editable={!revising}
+                  autoFocus
+                />
+                <TouchableOpacity
+                  style={[styles.reviseSendBtn, (revising || !instruction.trim()) && styles.reviseSendBtnDisabled]}
+                  onPress={handleRevise}
+                  disabled={revising || !instruction.trim()}
+                >
+                  {revising
+                    ? <ActivityIndicator size="small" color="#fff" />
+                    : <Text style={styles.reviseSendIcon}>➤</Text>
+                  }
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-
-          {/* Panel korekty — przesuwa się nad klawiaturą */}
-          {reviseModalVisible && (
-            <View style={[styles.revisePanel, { bottom: keyboardHeight }]}>
-              <View style={styles.revisePanelInner}>
-                <View style={styles.revisePanelHeader}>
-                  <Text style={styles.revisePanelTitle}>Popraw pismo</Text>
-                  <TouchableOpacity onPress={() => !revising && setReviseModalVisible(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Text style={styles.revisePanelClose}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.revisePanelRow}>
-                  <TextInput
-                    style={styles.revisePanelInput}
-                    value={instruction}
-                    onChangeText={setInstruction}
-                    placeholder='np. "Podkreśl że klient pali węglem, jest środek zimy"'
-                    placeholderTextColor={colors.text.disabled}
-                    multiline
-                    numberOfLines={3}
-                    textAlignVertical="top"
-                    editable={!revising}
-                    autoFocus
-                  />
-                  <TouchableOpacity
-                    style={[styles.reviseSendBtn, (revising || !instruction.trim()) && styles.reviseSendBtnDisabled]}
-                    onPress={handleRevise}
-                    disabled={revising || !instruction.trim()}
-                  >
-                    {revising
-                      ? <ActivityIndicator size="small" color="#fff" />
-                      : <Text style={styles.reviseSendIcon}>➤</Text>
-                    }
-                  </TouchableOpacity>
-                </View>
+          ) : (
+            <View style={styles.footer}>
+              <Button
+                mode="contained"
+                onPress={handleExportPDF}
+                loading={exporting}
+                disabled={exporting}
+                icon="file-pdf-box"
+                style={styles.pdfBtn}
+                contentStyle={{ paddingVertical: 8 }}
+              >
+                Eksportuj PDF
+              </Button>
+              <View style={styles.footerRow}>
+                <Button mode="outlined" onPress={handleShare} icon="share" style={styles.shareBtn}>
+                  Udostępnij tekst
+                </Button>
+                <Button mode="outlined" onPress={() => { store.resetForm(); router.replace("/"); }} icon="plus" style={styles.newBtn}>
+                  Nowy wywiad
+                </Button>
               </View>
             </View>
           )}
-        </>
+        </KeyboardAvoidingView>
       ) : (
         <View style={styles.noDoc}>
           <Text style={styles.noDocText}>Brak wygenerowanego pisma.</Text>
@@ -234,35 +212,34 @@ export default function ResultScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: spacing.md, backgroundColor: colors.primary },
-  backBtn: { padding: spacing.sm },
-  backText: { color: "#fff", fontSize: fontSize.sm },
-  headerTitle: { color: "#fff", fontSize: fontSize.md, fontWeight: "600" },
-  scroll: { padding: spacing.md, paddingBottom: 120 },
-  successBanner: { backgroundColor: "#E8F5E9", borderRadius: 8, padding: spacing.md, marginBottom: spacing.md },
-  successText: { color: colors.success, fontWeight: "700", fontSize: fontSize.md },
-  docCard: { backgroundColor: colors.surface, borderRadius: 12, padding: spacing.md, marginBottom: spacing.md, ...shadow.sm },
-  docText: { fontFamily: "monospace", fontSize: 12, lineHeight: 20, color: colors.text.primary },
-  refsCard: { backgroundColor: colors.primaryLight, borderRadius: 8, padding: spacing.md },
-  refsTitle: { fontSize: fontSize.md, fontWeight: "700", color: colors.primary, marginBottom: spacing.sm },
-  refItem: { fontSize: fontSize.sm, color: colors.secondary, lineHeight: 20, marginBottom: 4 },
-  footer: { padding: spacing.md, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border, gap: spacing.sm },
-  pdfBtn: { backgroundColor: colors.error },
-  footerRow: { flexDirection: "row", gap: spacing.sm },
-  shareBtn: { flex: 1 },
-  newBtn: { flex: 1 },
-  noDoc: { flex: 1, justifyContent: "center", alignItems: "center", padding: spacing.xl, gap: spacing.md },
-  noDocText: { fontSize: fontSize.lg, color: colors.text.secondary },
-  fab: { position: "absolute", right: spacing.md, bottom: 160, backgroundColor: colors.secondary, zIndex: 10, elevation: 6 },
-  revisePanel: { position: "absolute", left: 0, right: 0, zIndex: 20, elevation: 12 },
-  revisePanelInner: { backgroundColor: colors.surface, borderTopWidth: 2, borderTopColor: colors.primary, padding: spacing.md, gap: spacing.sm },
+  safe:           { flex: 1, backgroundColor: colors.background },
+  header:         { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: spacing.md, backgroundColor: colors.primary },
+  backBtn:        { padding: spacing.sm },
+  backText:       { color: "#fff", fontSize: fontSize.sm },
+  headerTitle:    { color: "#fff", fontSize: fontSize.md, fontWeight: "600" },
+  scroll:         { padding: spacing.md, paddingBottom: 120 },
+  successBanner:  { backgroundColor: "#E8F5E9", borderRadius: 8, padding: spacing.md, marginBottom: spacing.md },
+  successText:    { color: colors.success, fontWeight: "700", fontSize: fontSize.md },
+  docCard:        { backgroundColor: colors.surface, borderRadius: 12, padding: spacing.md, marginBottom: spacing.md, ...shadow.sm },
+  docText:        { fontFamily: "monospace", fontSize: 12, lineHeight: 20, color: colors.text.primary },
+  refsCard:       { backgroundColor: colors.primaryLight, borderRadius: 8, padding: spacing.md },
+  refsTitle:      { fontSize: fontSize.md, fontWeight: "700", color: colors.primary, marginBottom: spacing.sm },
+  refItem:        { fontSize: fontSize.sm, color: colors.secondary, lineHeight: 20, marginBottom: 4 },
+  footer:         { padding: spacing.md, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border, gap: spacing.sm },
+  pdfBtn:         { backgroundColor: colors.error },
+  footerRow:      { flexDirection: "row", gap: spacing.sm },
+  shareBtn:       { flex: 1 },
+  newBtn:         { flex: 1 },
+  noDoc:          { flex: 1, justifyContent: "center", alignItems: "center", padding: spacing.xl, gap: spacing.md },
+  noDocText:      { fontSize: fontSize.lg, color: colors.text.secondary },
+  fab:            { position: "absolute", right: spacing.md, bottom: 160, backgroundColor: colors.secondary, zIndex: 10, elevation: 6 },
+  revisePanel:    { backgroundColor: colors.surface, borderTopWidth: 2, borderTopColor: colors.primary, padding: spacing.md, gap: spacing.sm },
   revisePanelHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  revisePanelTitle: { fontSize: fontSize.md, fontWeight: "700", color: colors.primary },
-  revisePanelClose: { fontSize: 18, color: colors.text.secondary, paddingHorizontal: spacing.xs },
-  revisePanelRow: { flexDirection: "row", alignItems: "flex-end", gap: spacing.xs },
-  revisePanelInput: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: spacing.sm, fontSize: fontSize.sm, color: colors.text.primary, minHeight: 60, maxHeight: 100, backgroundColor: colors.background, textAlignVertical: "top" },
-  reviseSendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.secondary, justifyContent: "center", alignItems: "center" },
+  revisePanelTitle:  { fontSize: fontSize.md, fontWeight: "700", color: colors.primary },
+  revisePanelClose:  { fontSize: 20, color: colors.text.secondary, paddingHorizontal: spacing.xs },
+  revisePanelRow:    { flexDirection: "row", alignItems: "flex-end", gap: spacing.xs },
+  revisePanelInput:  { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: spacing.sm, fontSize: fontSize.sm, color: colors.text.primary, minHeight: 60, maxHeight: 100, backgroundColor: colors.background, textAlignVertical: "top" },
+  reviseSendBtn:     { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.secondary, justifyContent: "center", alignItems: "center" },
   reviseSendBtnDisabled: { backgroundColor: colors.border },
-  reviseSendIcon: { color: "#fff", fontSize: 18, marginLeft: 2 },
+  reviseSendIcon:    { color: "#fff", fontSize: 18, marginLeft: 2 },
 });
