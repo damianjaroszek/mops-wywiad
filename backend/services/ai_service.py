@@ -119,8 +119,9 @@ def build_prompt(form_data: dict, legal_context: str, worker_name: str) -> str:
     hl = form_data.get("health", {})
     fam = form_data.get("family", {})
 
+    members = fam.get("members", [])
     members_text = ""
-    for m in fam.get("members", []):
+    for m in members:
         members_text += (
             f"  • {m.get('name', '?')} ({m.get('relation', '?')}), "
             f"ur. {m.get('birth_year', '?')}, "
@@ -132,8 +133,16 @@ def build_prompt(form_data: dict, legal_context: str, worker_name: str) -> str:
     reasons = ", ".join(p.get("help_reasons", [])) or "nie określono"
     person = f"{p.get('first_name', 'N')} {p.get('last_name', 'N')}"
 
+    total_household = 1 + len(members)
+    household_list = person + (
+        (", " + ", ".join(m.get("name", "?") for m in members)) if members else ""
+    )
+
     return f"""ZADANIE: Sporządź KOMPLETNY rodzinny wywiad środowiskowy na podstawie poniższych danych.
 Wzoruj się na przykładach stylu z instrukcji systemowej — zachowaj zbliżoną długość i strukturę.
+
+⚠ SKŁAD GOSPODARSTWA DOMOWEGO ({total_household} {'osoba' if total_household == 1 else 'osoby' if total_household in [2,3,4] else 'osób'}): {household_list}
+   Liczba ta MUSI być zgodna z treścią pisma — nie pisz "jednoosobowe gospodarstwo" jeśli są inni członkowie.
 
 ━━━ DANE Z WYWIADU ━━━
 
