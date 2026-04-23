@@ -2,14 +2,14 @@
  * Ekran wynikowy — podgląd i eksport wygenerowanego pisma
  */
 import React, { useEffect, useState } from "react";
-import { View, ScrollView, StyleSheet, Text, TouchableOpacity, Share, Alert, ActivityIndicator } from "react-native";
+import { View, ScrollView, StyleSheet, Text, TouchableOpacity, Share, Alert, ActivityIndicator, TextInput } from "react-native";
 import { Button, Divider, Chip } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { useInterviewStore } from "@/store/interviewStore";
-import { getInterview } from "@/services/api";
+import { getInterview, reviseDocument } from "@/services/api";
 import { colors, spacing, fontSize, shadow } from "@/constants/theme";
 
 export default function ResultScreen() {
@@ -19,6 +19,9 @@ export default function ResultScreen() {
   const [lawRefs, setLawRefs] = useState<string[]>(store.lawReferences || []);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [revising, setRevising] = useState(false);
+  const [instruction, setInstruction] = useState("");
+  const interviewId = id || store.interviewId;
 
   useEffect(() => {
     if (id && !store.generatedDocument) {
@@ -82,6 +85,21 @@ export default function ResultScreen() {
     }
   };
 
+  const handleRevise = async () => {
+    if (!instruction.trim() || !interviewId || !document) return;
+    setRevising(true);
+    try {
+      const result = await reviseDocument(interviewId, instruction.trim(), document);
+      setDocument(result.document);
+      store.setGeneratedDocument(result.document, lawRefs);
+      setInstruction("");
+    } catch (e: any) {
+      Alert.alert("Błąd korekty", e.message);
+    } finally {
+      setRevising(false);
+    }
+  };
+
   const handleNew = () => {
     store.resetForm();
     router.replace("/");
@@ -123,6 +141,35 @@ export default function ResultScreen() {
                 ))}
               </View>
             )}
+
+            <View style={styles.reviseCard}>
+              <Text style={styles.reviseTitle}>Popraw pismo</Text>
+              <Text style={styles.reviseHint}>
+                Opisz co zmienić lub uzupełnić — np. "Podkreśl że klient pali węglem, jest zima" albo "Usuń wzmiankę o konflikcie z sąsiadami"
+              </Text>
+              <TextInput
+                style={styles.reviseInput}
+                value={instruction}
+                onChangeText={setInstruction}
+                placeholder="Co poprawić lub dodać?"
+                placeholderTextColor={colors.text.disabled}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+                editable={!revising}
+              />
+              <Button
+                mode="contained"
+                onPress={handleRevise}
+                loading={revising}
+                disabled={revising || !instruction.trim()}
+                icon="pencil"
+                style={styles.reviseBtn}
+                contentStyle={{ paddingVertical: 6 }}
+              >
+                {revising ? "Poprawiam pismo..." : "Popraw pismo"}
+              </Button>
+            </View>
           </ScrollView>
 
           <View style={styles.footer}>
@@ -178,4 +225,9 @@ const styles = StyleSheet.create({
   newBtn: { flex: 1 },
   noDoc: { flex: 1, justifyContent: "center", alignItems: "center", padding: spacing.xl, gap: spacing.md },
   noDocText: { fontSize: fontSize.lg, color: colors.text.secondary },
+  reviseCard: { backgroundColor: colors.surface, borderRadius: 12, padding: spacing.md, marginTop: spacing.md, ...shadow.sm },
+  reviseTitle: { fontSize: fontSize.md, fontWeight: "700", color: colors.primary, marginBottom: spacing.xs },
+  reviseHint: { fontSize: fontSize.sm, color: colors.text.secondary, marginBottom: spacing.sm, lineHeight: 18 },
+  reviseInput: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: spacing.sm, fontSize: fontSize.sm, color: colors.text.primary, minHeight: 80, backgroundColor: colors.background, marginBottom: spacing.sm },
+  reviseBtn: { backgroundColor: colors.secondary },
 });

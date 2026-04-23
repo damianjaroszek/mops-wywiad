@@ -147,6 +147,16 @@ class GenerateResponse(BaseModel):
     processing_time_seconds: float
 
 
+class ReviseRequest(BaseModel):
+    instruction: str = Field(..., min_length=5, max_length=2000)
+    current_document: str = Field(..., min_length=50)
+
+
+class ReviseResponse(BaseModel):
+    document: str
+    processing_time_seconds: float
+
+
 class PaginatedInterviews(BaseModel):
     items: List[InterviewResponse]
     total: int

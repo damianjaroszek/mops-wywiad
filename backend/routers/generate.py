@@ -7,8 +7,8 @@ from slowapi.util import get_remote_address
 from uuid import UUID
 from db.supabase_client import get_supabase
 from services.rag_service import search_laws, format_context_for_prompt, extract_references
-from services.ai_service import generate_document as generate_interview_document
-from models.schemas import GenerateRequest as GenerateDocumentRequest, GenerateResponse
+from services.ai_service import generate_document as generate_interview_document, revise_document
+from models.schemas import GenerateRequest as GenerateDocumentRequest, GenerateResponse, ReviseRequest, ReviseResponse
 import logging, time
 
 logger = logging.getLogger(__name__)
@@ -67,6 +67,37 @@ async def generate_document(
         document=document,
         law_references=law_references,
         processing_time_seconds=elapsed,
+    )
+
+
+@router.post("/interviews/{interview_id}/revise", response_model=ReviseResponse)
+@limiter.limit("20/minute")
+async def revise_interview_document(
+    request: Request,
+    interview_id: UUID,
+    body: ReviseRequest,
+):
+    """Nanosi poprawkę na gotowe pismo według wskazówki pracownika."""
+    start_time = time.time()
+    supabase = get_supabase()
+
+    result = supabase.table("interviews").select("id").eq("id", str(interview_id)).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Wywiad nie istnieje.")
+
+    try:
+        revised = revise_document(body.current_document, body.instruction)
+    except Exception as e:
+        logger.error(f"Błąd rewizji AI: {e}")
+        raise HTTPException(status_code=503, detail="Nie udało się poprawić pisma. Spróbuj ponownie.")
+
+    supabase.table("interviews").update({
+        "generated_document": revised,
+    }).eq("id", str(interview_id)).execute()
+
+    return ReviseResponse(
+        document=revised,
+        processing_time_seconds=round(time.time() - start_time, 2),
     )
 
 

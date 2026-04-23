@@ -211,6 +211,38 @@ Zachowaj następującą kolejność treści w akapitach:
 Sporządź teraz pełne pismo:"""
 
 
+def revise_document(current_document: str, instruction: str) -> str:
+    """Nanosi poprawkę na gotowe pismo według wskazówki pracownika socjalnego."""
+    prompt = f"""Jesteś asystentem pracownika socjalnego. Masz gotowe pismo urzędowe (wywiad środowiskowy) i instrukcję co w nim poprawić lub uzupełnić.
+
+INSTRUKCJA PRACOWNIKA:
+{instruction}
+
+ZASADY:
+- Wykonaj DOKŁADNIE to o co prosi pracownik — nie więcej, nie mniej
+- Zachowaj styl, formę i język całego pisma
+- Nie zmieniaj fragmentów których instrukcja nie dotyczy
+- Zwróć TYLKO pełny poprawiony tekst pisma, bez komentarzy
+
+AKTUALNE PISMO:
+{current_document}
+
+Poprawione pismo:"""
+
+    message = get_anthropic().messages.create(
+        model=MODEL_EDIT,
+        max_tokens=MAX_TOKENS,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.1,
+    )
+    revised = message.content[0].text
+    logger.info(
+        f"Rewizja zakończona: {len(revised)} znaków, "
+        f"tokeny: in={message.usage.input_tokens} out={message.usage.output_tokens}"
+    )
+    return revised
+
+
 def _edit_document(draft: str) -> str:
     """Drugi przebieg — Sonnet redaguje pismo pod kątem języka i stylu."""
     edit_prompt = f"""Jesteś korektorem języka polskiego specjalizującym się w pismach urzędowych.

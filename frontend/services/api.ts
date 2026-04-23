@@ -79,6 +79,8 @@ export const listInterviews = async (page = 1, perPage = 20) => (await api.get("
 export const getInterview = async (id: string): Promise<Interview> => (await api.get(`/interviews/${id}`)).data;
 export const deleteInterview = async (id: string) => api.delete(`/interviews/${id}`);
 export const generateDocument = async (interviewId: string): Promise<GenerateResult> => (await api.post(`/interviews/${interviewId}/generate`, {})).data;
+export const reviseDocument = async (interviewId: string, instruction: string, currentDocument: string): Promise<{ document: string; processing_time_seconds: number }> =>
+  (await api.post(`/interviews/${interviewId}/revise`, { instruction, current_document: currentDocument })).data;
 export const saveDraft = async (formData: any, interviewId?: string | null): Promise<Interview> => {
   if (interviewId) {
     return (await api.patch(`/interviews/${interviewId}`, { form_data: formData })).data;
