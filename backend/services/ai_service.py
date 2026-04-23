@@ -229,11 +229,18 @@ NIE zaczynaj od nagłówka z miejscowością, datą, nazwą ośrodka ani tytułe
 Sporządź teraz pełne pismo:"""
 
 
-def revise_document(current_document: str, instruction: str) -> str:
+def revise_document(current_document: str, instruction: str, selected_fragment: str = "") -> str:
     """Nanosi poprawkę na gotowe pismo według wskazówki pracownika socjalnego."""
+    fragment_block = ""
+    if selected_fragment.strip():
+        fragment_block = (
+            f"ZAZNACZONY FRAGMENT (zmień WYŁĄCZNIE ten fragment — reszta pisma bez zmian):\n"
+            f"---\n{selected_fragment.strip()}\n---\n\n"
+        )
+
     prompt = f"""Jesteś asystentem pracownika socjalnego. Masz gotowe pismo urzędowe (wywiad środowiskowy) i instrukcję co w nim poprawić lub uzupełnić.
 
-INSTRUKCJA PRACOWNIKA:
+{fragment_block}INSTRUKCJA PRACOWNIKA:
 {instruction}
 
 ZASADY:

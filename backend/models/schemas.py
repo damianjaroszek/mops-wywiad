@@ -150,6 +150,7 @@ class GenerateResponse(BaseModel):
 class ReviseRequest(BaseModel):
     instruction: str = Field(..., min_length=5, max_length=2000)
     current_document: str = Field(..., min_length=50)
+    selected_fragment: Optional[str] = Field(None, max_length=3000)
 
 
 class ReviseResponse(BaseModel):

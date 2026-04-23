@@ -86,7 +86,7 @@ async def revise_interview_document(
         raise HTTPException(status_code=404, detail="Wywiad nie istnieje.")
 
     try:
-        revised = revise_document(body.current_document, body.instruction)
+        revised = revise_document(body.current_document, body.instruction, body.selected_fragment or "")
     except Exception as e:
         logger.error(f"Błąd rewizji AI: {e}")
         raise HTTPException(status_code=503, detail="Nie udało się poprawić pisma. Spróbuj ponownie.")

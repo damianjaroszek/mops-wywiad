@@ -17,6 +17,7 @@ export default function ResultScreen() {
   const store = useInterviewStore();
   const [document, setDocument] = useState(store.generatedDocument || "");
   const [markedDocument, setMarkedDocument] = useState<string | null>(null);
+  const [selectedText, setSelectedText] = useState("");
   const [lawRefs, setLawRefs] = useState<string[]>(store.lawReferences || []);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -80,12 +81,18 @@ export default function ResultScreen() {
     if (!instruction.trim() || !interviewId || !document) return;
     setRevising(true);
     try {
-      const result = await reviseDocument(interviewId, instruction.trim(), document);
+      const result = await reviseDocument(
+        interviewId,
+        instruction.trim(),
+        document,
+        selectedText || undefined,
+      );
       const clean = stripMarkers(result.document);
       setMarkedDocument(result.document);
       setDocument(clean);
       store.setGeneratedDocument(clean, lawRefs);
       setInstruction("");
+      setSelectedText("");
       setReviseOpen(false);
     } catch (e: any) {
       Alert.alert("Błąd korekty", e.message);
@@ -140,16 +147,28 @@ export default function ResultScreen() {
               <Text style={styles.successText}>✓ Pismo wygenerowane pomyślnie</Text>
             </View>
             <View style={styles.docCard}>
-              {markedDocument
-                ? renderDocumentText(markedDocument)
-                : renderDocumentText(document)}
-              {markedDocument && (
-                <TouchableOpacity
-                  onPress={() => setMarkedDocument(null)}
-                  style={styles.clearHighlightBtn}
-                >
-                  <Text style={styles.clearHighlightText}>Ukryj podświetlenie zmian</Text>
-                </TouchableOpacity>
+              {markedDocument ? (
+                <>
+                  {renderDocumentText(markedDocument)}
+                  <TouchableOpacity
+                    onPress={() => setMarkedDocument(null)}
+                    style={styles.clearHighlightBtn}
+                  >
+                    <Text style={styles.clearHighlightText}>Ukryj podświetlenie zmian</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <TextInput
+                  editable={false}
+                  multiline
+                  style={styles.docInput}
+                  value={document}
+                  underlineColorAndroid="transparent"
+                  onSelectionChange={(e) => {
+                    const { start, end } = e.nativeEvent.selection;
+                    if (start !== end) setSelectedText(document.slice(start, end));
+                  }}
+                />
               )}
             </View>
             {lawRefs.length > 0 && (
@@ -166,7 +185,7 @@ export default function ResultScreen() {
           {!reviseOpen && (
             <FAB
               icon="pencil"
-              label="Popraw"
+              label={selectedText ? "Popraw zaznaczone" : "Popraw"}
               style={styles.fab}
               onPress={() => setReviseOpen(true)}
               color="#fff"
@@ -179,18 +198,29 @@ export default function ResultScreen() {
               <View style={styles.revisePanelHeader}>
                 <Text style={styles.revisePanelTitle}>Popraw pismo</Text>
                 <TouchableOpacity
-                  onPress={() => !revising && setReviseOpen(false)}
+                  onPress={() => { if (!revising) { setReviseOpen(false); setSelectedText(""); } }}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
                   <Text style={styles.revisePanelClose}>✕</Text>
                 </TouchableOpacity>
               </View>
+              {selectedText ? (
+                <View style={styles.fragmentChip}>
+                  <Text style={styles.fragmentChipText} numberOfLines={3}>{selectedText}</Text>
+                  <TouchableOpacity
+                    onPress={() => setSelectedText("")}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Text style={styles.fragmentChipClear}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
               <View style={styles.revisePanelRow}>
                 <TextInput
                   style={styles.revisePanelInput}
                   value={instruction}
                   onChangeText={setInstruction}
-                  placeholder='np. "zmień zdanie o ogrzewaniu — klient pali węglem"'
+                  placeholder={selectedText ? "Co zmienić w zaznaczonym fragmencie?" : 'np. "zmień zdanie o ogrzewaniu — klient pali węglem"'}
                   placeholderTextColor={colors.text.disabled}
                   multiline
                   numberOfLines={3}
@@ -275,7 +305,11 @@ const styles = StyleSheet.create({
   reviseSendBtn:     { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.secondary, justifyContent: "center", alignItems: "center" },
   reviseSendBtnDisabled: { backgroundColor: colors.border },
   reviseSendIcon:    { color: "#fff", fontSize: 18, marginLeft: 2 },
-  highlighted:       { backgroundColor: "#FFEE58", color: "#1A1A1A", fontWeight: "700" },
-  clearHighlightBtn: { marginTop: 12, alignSelf: "flex-end" },
-  clearHighlightText:{ fontSize: 11, color: colors.text.disabled, textDecorationLine: "underline" },
+  highlighted:        { backgroundColor: "#FFEE58", color: "#1A1A1A", fontWeight: "700" },
+  clearHighlightBtn:  { marginTop: 12, alignSelf: "flex-end" },
+  clearHighlightText: { fontSize: 11, color: colors.text.disabled, textDecorationLine: "underline" },
+  docInput:           { fontFamily: "monospace", fontSize: 12, lineHeight: 20, color: colors.text.primary, textAlignVertical: "top", padding: 0 },
+  fragmentChip:       { flexDirection: "row", alignItems: "flex-start", backgroundColor: colors.primaryLight, borderLeftWidth: 3, borderLeftColor: colors.primary, borderRadius: 4, padding: spacing.sm, marginBottom: spacing.xs, gap: spacing.xs },
+  fragmentChipText:   { flex: 1, fontSize: 11, color: colors.text.secondary, fontStyle: "italic", lineHeight: 16 },
+  fragmentChipClear:  { fontSize: 14, color: colors.text.disabled, paddingTop: 1 },
 });
