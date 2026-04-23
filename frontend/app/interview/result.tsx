@@ -1,8 +1,8 @@
 /**
  * Ekran wynikowy — podgląd i eksport wygenerowanego pisma
  */
-import React, { useEffect, useState } from "react";
-import { View, ScrollView, StyleSheet, Text, TouchableOpacity, Share, Alert, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { View, ScrollView, StyleSheet, Text, TouchableOpacity, Share, Alert, ActivityIndicator, TextInput, Keyboard, KeyboardEvent } from "react-native";
 import { Button, Divider, Chip, FAB } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
@@ -22,7 +22,14 @@ export default function ResultScreen() {
   const [revising, setRevising] = useState(false);
   const [instruction, setInstruction] = useState("");
   const [reviseModalVisible, setReviseModalVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const interviewId = id || store.interviewId;
+
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", (e: KeyboardEvent) => setKeyboardHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener("keyboardDidHide", () => setKeyboardHeight(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   useEffect(() => {
     if (id && !store.generatedDocument) {
@@ -178,12 +185,9 @@ export default function ResultScreen() {
             </View>
           </View>
 
-          {/* Panel korekty — przyklejony pod stopką, nie blokuje scrollowania */}
+          {/* Panel korekty — przesuwa się nad klawiaturą */}
           {reviseModalVisible && (
-            <KeyboardAvoidingView
-              behavior={Platform.OS === "ios" ? "padding" : "height"}
-              style={styles.revisePanel}
-            >
+            <View style={[styles.revisePanel, { bottom: keyboardHeight }]}>
               <View style={styles.revisePanelInner}>
                 <View style={styles.revisePanelHeader}>
                   <Text style={styles.revisePanelTitle}>Popraw pismo</Text>
@@ -250,7 +254,7 @@ const styles = StyleSheet.create({
   noDoc: { flex: 1, justifyContent: "center", alignItems: "center", padding: spacing.xl, gap: spacing.md },
   noDocText: { fontSize: fontSize.lg, color: colors.text.secondary },
   fab: { position: "absolute", right: spacing.md, bottom: 160, backgroundColor: colors.secondary, zIndex: 10, elevation: 6 },
-  revisePanel: { position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 20, elevation: 12 },
+  revisePanel: { position: "absolute", left: 0, right: 0, zIndex: 20, elevation: 12 },
   revisePanelInner: { backgroundColor: colors.surface, borderTopWidth: 2, borderTopColor: colors.primary, padding: spacing.md, gap: spacing.sm },
   revisePanelHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   revisePanelTitle: { fontSize: fontSize.md, fontWeight: "700", color: colors.primary },
