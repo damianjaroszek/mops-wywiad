@@ -30,6 +30,5 @@ build/
 Thumbs.db
 *.log
 
-# Dane testowe / ustawy (duże pliki, trafiają do Supabase nie do repo)
+# Ustawy — duże pliki, trafiają do Supabase nie do repo
 backend/laws_texts/
-backend/style_examples/

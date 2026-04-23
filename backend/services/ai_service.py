@@ -2,15 +2,21 @@
 AI Service — generowanie wywiadu środowiskowego przez Claude Haiku
 """
 import os
+import re
 import logging
+from pathlib import Path
 from anthropic import Anthropic
 from tenacity import retry, stop_after_attempt, wait_exponential
+import docx
+import pdfplumber
 
 logger = logging.getLogger(__name__)
 _client: Anthropic | None = None
+_style_examples: str | None = None
 
 MODEL = "claude-haiku-4-5-20251001"
 MAX_TOKENS = 4096
+EXAMPLES_DIR = Path(__file__).parent.parent / "style_examples"
 
 
 def get_anthropic() -> Anthropic:
@@ -23,8 +29,79 @@ def get_anthropic() -> Anthropic:
     return _client
 
 
+def _read_file(fp: Path) -> str:
+    ext = fp.suffix.lower()
+    if ext == ".docx":
+        document = docx.Document(fp)
+        return "\n".join(p.text for p in document.paragraphs if p.text.strip())
+    if ext == ".pdf":
+        pages = []
+        with pdfplumber.open(fp) as pdf:
+            for page in pdf.pages:
+                t = page.extract_text()
+                if t:
+                    pages.append(t)
+        return "\n".join(pages)
+    return fp.read_text(encoding="utf-8", errors="ignore")
+
+
+def load_style_examples() -> str:
+    """Wczytuje przykładowe wywiady z backend/style_examples/ (raz, potem cache)."""
+    global _style_examples
+    if _style_examples is not None:
+        return _style_examples
+
+    if not EXAMPLES_DIR.exists():
+        _style_examples = ""
+        return ""
+
+    files = sorted(
+        f for f in EXAMPLES_DIR.iterdir()
+        if f.suffix.lower() in {".docx", ".pdf", ".txt"}
+    )
+    if not files:
+        _style_examples = ""
+        return ""
+
+    full_text = "\n\n".join(_read_file(f) for f in files)
+
+    # Podziel po nagłówkach "WYWIAD I", "WYWIAD II", … lub "WYWIAD 1", "WYWIAD 2", …
+    parts = re.split(r'(?m)(?=^WYWIAD\s+[IVXivx\d]+)', full_text)
+    parts = [p.strip() for p in parts if len(p.strip()) > 200]
+
+    if not parts:
+        # Brak nagłówków — traktuj cały plik jako jeden wzorzec
+        parts = [full_text.strip()]
+
+    formatted = "\n\n".join(
+        f"── PRZYKŁAD {i + 1} ──\n{p}" for i, p in enumerate(parts)
+    )
+    _style_examples = formatted
+    logger.info(f"Załadowano {len(parts)} przykład(ów) stylu ({len(formatted)} znaków)")
+    return _style_examples
+
+
+def _build_system_prompt() -> str:
+    examples = load_style_examples()
+    base = (
+        "Jesteś doświadczonym pracownikiem socjalnym MOPS sporządzającym oficjalne "
+        "pisma urzędowe — rodzinne wywiady środowiskowe.\n\n"
+        "Piszesz wyłącznie po polsku, stylem urzędowym, w trzeciej osobie. "
+        "Cytuj konkretne artykuły ustaw z podanej podstawy prawnej. "
+        "Opisuj tylko fakty wynikające z danych — nie domyślaj się informacji których nie ma."
+    )
+    if not examples:
+        return base
+    return (
+        f"{base}\n\n"
+        "WZORCE STYLU — naśladuj DOKŁADNIE styl, długość, strukturę i język "
+        "poniższych wywiadów. To są przykłady napisane przez pracownika socjalnego "
+        "i stanowią wzorzec do naśladowania:\n\n"
+        f"{examples}"
+    )
+
+
 def _fmt(val, fallback="nie podano") -> str:
-    """Bezpieczne formatowanie wartości null-safe."""
     if val is None:
         return fallback
     if isinstance(val, bool):
@@ -41,7 +118,6 @@ def build_prompt(form_data: dict, legal_context: str, worker_name: str) -> str:
     hl = form_data.get("health", {})
     fam = form_data.get("family", {})
 
-    # Członkowie rodziny
     members_text = ""
     for m in fam.get("members", []):
         members_text += (
@@ -54,18 +130,9 @@ def build_prompt(form_data: dict, legal_context: str, worker_name: str) -> str:
 
     reasons = ", ".join(p.get("help_reasons", [])) or "nie określono"
     person = f"{p.get('first_name', 'N')} {p.get('last_name', 'N')}"
-    city = p.get("address_city", "")
 
-    prompt = f"""Jesteś doświadczonym pracownikiem socjalnym sporządzającym oficjalne pismo urzędowe.
-
-ZADANIE: Sporządź KOMPLETNY rodzinny wywiad środowiskowy na podstawie poniższych danych.
-
-OBOWIĄZKOWE ZASADY:
-1. Pisz wyłącznie po polsku, stylem urzędowym, w trzeciej osobie ("Osoba ubiegająca się...", "Pan/Pani X...")
-2. Cytuj KONKRETNE artykuły z sekcji PODSTAWA PRAWNA (poniżej) — format: "zgodnie z art. X ust. Y ustawy z dnia DD miesiąca RRRR r. o [tytuł] (Dz.U. RRRR poz. NNN)"
-3. Opisuj TYLKO fakty wynikające z danych — nie domyślaj się nieistniejących informacji
-4. Wnioski muszą wynikać bezpośrednio z opisanej sytuacji
-5. Pismo musi być gotowe do użycia — kompletne, formalne, profesjonalne
+    return f"""ZADANIE: Sporządź KOMPLETNY rodzinny wywiad środowiskowy na podstawie poniższych danych.
+Wzoruj się na przykładach stylu z instrukcji systemowej — zachowaj zbliżoną długość i strukturę.
 
 ━━━ DANE Z WYWIADU ━━━
 
@@ -75,7 +142,7 @@ OSOBA OBJĘTA WYWIADEM:
   Data urodzenia: {_fmt(p.get("birth_date"))}
   Płeć: {_fmt(p.get("gender"))}
   Stan cywilny: {_fmt(p.get("marital_status"))}
-  Adres: {p.get("address_street", "")} {p.get("address_postal_code", "")} {city}
+  Adres: {p.get("address_street", "")} {p.get("address_postal_code", "")} {p.get("address_city", "")}
   Obywatelstwo: {_fmt(p.get("citizenship"), "polskie")}
   Przyczyny ubiegania się o pomoc: {reasons}
 
@@ -92,7 +159,7 @@ SYTUACJA MIESZKANIOWA:
 SYTUACJA RODZINNA:
   Członkowie rodziny:
 {members_text}
-  Konflikty w rodzinie: {_fmt(h.get("has_conflicts"))}
+  Konflikty w rodzinie: {_fmt(fam.get("has_conflicts"))}
   {("Opis konfliktów: " + fam.get("conflict_description", "")) if fam.get("has_conflicts") else ""}
   Przemoc w rodzinie: {_fmt(fam.get("has_domestic_violence"))}
   {("Opis przemocy: " + fam.get("violence_description", "")) if fam.get("has_domestic_violence") else ""}
@@ -159,21 +226,20 @@ VII. PODSTAWA PRAWNA
 
 Sporządź teraz pełne pismo:"""
 
-    return prompt
-
 
 @retry(stop=stop_after_attempt(2), wait=wait_exponential(min=3, max=20))
 def generate_document(form_data: dict, legal_context: str, worker_name: str) -> str:
     """Wywołuje Claude Haiku i zwraca wygenerowane pismo."""
+    system_prompt = _build_system_prompt()
     prompt = build_prompt(form_data, legal_context, worker_name)
-    token_estimate = len(prompt) // 4
-    logger.info(f"Generuję pismo przez {MODEL} (~{token_estimate} tokenów input)")
+    logger.info(f"Generuję pismo przez {MODEL} (system: {len(system_prompt)} znaków)")
 
     message = get_anthropic().messages.create(
         model=MODEL,
         max_tokens=MAX_TOKENS,
+        system=system_prompt,
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.2,  # niższe = bardziej formalne i powtarzalne
+        temperature=0.2,
     )
 
     document = message.content[0].text
