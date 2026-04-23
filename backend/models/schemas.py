@@ -47,7 +47,7 @@ class HousingData(BaseModel):
 
 class FamilyMember(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
-    birth_year: Optional[int] = Field(None, ge=1900, le=2024)
+    birth_year: Optional[int] = Field(None, ge=1900, le=2030)
     relation: Optional[str] = None
     education: Optional[str] = None
     work_place: Optional[str] = None
