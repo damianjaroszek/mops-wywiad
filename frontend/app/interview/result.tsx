@@ -2,7 +2,7 @@
  * Ekran wynikowy — podgląd i eksport wygenerowanego pisma
  */
 import React, { useEffect, useState } from "react";
-import { View, ScrollView, StyleSheet, Text, TouchableOpacity, Share, Alert, ActivityIndicator, TextInput, Modal, KeyboardAvoidingView, Platform } from "react-native";
+import { View, ScrollView, StyleSheet, Text, TouchableOpacity, Share, Alert, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform } from "react-native";
 import { Button, Divider, Chip, FAB } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
@@ -145,69 +145,16 @@ export default function ResultScreen() {
             )}
           </ScrollView>
 
-          {/* FAB — pływający przycisk korekty */}
-          <FAB
-            icon="pencil"
-            label="Popraw"
-            style={styles.fab}
-            onPress={() => setReviseModalVisible(true)}
-            color="#fff"
-          />
-
-          {/* Modal korekty */}
-          <Modal
-            visible={reviseModalVisible}
-            transparent
-            animationType="slide"
-            onRequestClose={() => !revising && setReviseModalVisible(false)}
-          >
-            <TouchableOpacity
-              style={styles.modalOverlay}
-              activeOpacity={1}
-              onPress={() => !revising && setReviseModalVisible(false)}
+          {/* FAB — pływający przycisk korekty, ukrywa się gdy panel otwarty */}
+          {!reviseModalVisible && (
+            <FAB
+              icon="pencil"
+              label="Popraw"
+              style={styles.fab}
+              onPress={() => setReviseModalVisible(true)}
+              color="#fff"
             />
-            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalWrapper}>
-              <View style={styles.modalSheet}>
-                <View style={styles.modalHandle} />
-                <Text style={styles.modalTitle}>Popraw pismo</Text>
-                <Text style={styles.modalHint}>
-                  Opisz co zmienić lub uzupełnić, np. "Podkreśl że klient pali węglem, jest środek zimy"
-                </Text>
-                <TextInput
-                  style={styles.modalInput}
-                  value={instruction}
-                  onChangeText={setInstruction}
-                  placeholder="Co poprawić lub dodać?"
-                  placeholderTextColor={colors.text.disabled}
-                  multiline
-                  numberOfLines={4}
-                  textAlignVertical="top"
-                  editable={!revising}
-                  autoFocus
-                />
-                <View style={styles.modalActions}>
-                  <Button
-                    mode="outlined"
-                    onPress={() => setReviseModalVisible(false)}
-                    disabled={revising}
-                    style={styles.modalCancelBtn}
-                  >
-                    Anuluj
-                  </Button>
-                  <Button
-                    mode="contained"
-                    onPress={handleRevise}
-                    loading={revising}
-                    disabled={revising || !instruction.trim()}
-                    icon="check"
-                    style={styles.modalSubmitBtn}
-                  >
-                    {revising ? "Poprawiam..." : "Popraw"}
-                  </Button>
-                </View>
-              </View>
-            </KeyboardAvoidingView>
-          </Modal>
+          )}
 
           <View style={styles.footer}>
             <Button
@@ -230,6 +177,46 @@ export default function ResultScreen() {
               </Button>
             </View>
           </View>
+
+          {/* Panel korekty — przyklejony pod stopką, nie blokuje scrollowania */}
+          {reviseModalVisible && (
+            <KeyboardAvoidingView
+              behavior={Platform.OS === "ios" ? "padding" : "height"}
+              style={styles.revisePanel}
+            >
+              <View style={styles.revisePanelInner}>
+                <View style={styles.revisePanelHeader}>
+                  <Text style={styles.revisePanelTitle}>Popraw pismo</Text>
+                  <TouchableOpacity onPress={() => !revising && setReviseModalVisible(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Text style={styles.revisePanelClose}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+                <TextInput
+                  style={styles.revisePanelInput}
+                  value={instruction}
+                  onChangeText={setInstruction}
+                  placeholder='np. "Podkreśl że klient pali węglem, jest środek zimy"'
+                  placeholderTextColor={colors.text.disabled}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                  editable={!revising}
+                  autoFocus
+                />
+                <Button
+                  mode="contained"
+                  onPress={handleRevise}
+                  loading={revising}
+                  disabled={revising || !instruction.trim()}
+                  icon="check"
+                  style={styles.revisePanelBtn}
+                  contentStyle={{ paddingVertical: 6 }}
+                >
+                  {revising ? "Poprawiam..." : "Popraw pismo"}
+                </Button>
+              </View>
+            </KeyboardAvoidingView>
+          )}
         </>
       ) : (
         <View style={styles.noDoc}>
@@ -262,15 +249,12 @@ const styles = StyleSheet.create({
   newBtn: { flex: 1 },
   noDoc: { flex: 1, justifyContent: "center", alignItems: "center", padding: spacing.xl, gap: spacing.md },
   noDocText: { fontSize: fontSize.lg, color: colors.text.secondary },
-  fab: { position: "absolute", right: spacing.md, bottom: 100, backgroundColor: colors.secondary },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
-  modalWrapper: { justifyContent: "flex-end" },
-  modalSheet: { backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: spacing.lg, paddingBottom: spacing.xl },
-  modalHandle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: "center", marginBottom: spacing.md },
-  modalTitle: { fontSize: fontSize.lg, fontWeight: "700", color: colors.text.primary, marginBottom: spacing.xs },
-  modalHint: { fontSize: fontSize.sm, color: colors.text.secondary, marginBottom: spacing.md, lineHeight: 18 },
-  modalInput: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: spacing.sm, fontSize: fontSize.sm, color: colors.text.primary, minHeight: 100, backgroundColor: colors.background, marginBottom: spacing.md, textAlignVertical: "top" },
-  modalActions: { flexDirection: "row", gap: spacing.sm },
-  modalCancelBtn: { flex: 1 },
-  modalSubmitBtn: { flex: 2, backgroundColor: colors.secondary },
+  fab: { position: "absolute", right: spacing.md, bottom: 160, backgroundColor: colors.secondary, zIndex: 10, elevation: 6 },
+  revisePanel: { position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 20, elevation: 12 },
+  revisePanelInner: { backgroundColor: colors.surface, borderTopWidth: 2, borderTopColor: colors.primary, padding: spacing.md, gap: spacing.sm },
+  revisePanelHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  revisePanelTitle: { fontSize: fontSize.md, fontWeight: "700", color: colors.primary },
+  revisePanelClose: { fontSize: 18, color: colors.text.secondary, paddingHorizontal: spacing.xs },
+  revisePanelInput: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: spacing.sm, fontSize: fontSize.sm, color: colors.text.primary, minHeight: 75, backgroundColor: colors.background, textAlignVertical: "top" },
+  revisePanelBtn: { backgroundColor: colors.secondary },
 });
