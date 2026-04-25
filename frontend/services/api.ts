@@ -90,6 +90,64 @@ export const reviseDocument = async (
     current_document: currentDocument,
     ...(selectedFragment ? { selected_fragment: selectedFragment } : {}),
   })).data;
+/**
+ * Normalizuje form_data z API do formatu store.
+ * Obsługuje dwa formaty:
+ *  - draft (saveDraft): employment i financial rozdzielone, health ma chronically_ill_count i addiction_types[]
+ *  - completed (createInterview): employment+financial scalone, health ma chronically_ill_persons i addiction_type
+ */
+export function normalizeFormDataForStore(raw: any): any {
+  if (!raw) return {};
+  const { employment: emp, financial: fin, family, health, ...rest } = raw;
+
+  const empSrc = emp ?? {};
+  const finSrc = fin ?? empSrc;
+
+  const employment = {
+    employment_status:            empSrc.employment_status            ?? "",
+    is_registered_unemployed:     empSrc.is_registered_unemployed     ?? null,
+    has_unemployment_benefit:     empSrc.has_unemployment_benefit     ?? null,
+    unemployment_benefit_amount:  String(empSrc.unemployment_benefit_amount ?? ""),
+    qualifications:               empSrc.qualifications               ?? "",
+    last_employment:              empSrc.last_employment              ?? "",
+  };
+
+  const financial = {
+    total_family_income:    String(finSrc.total_family_income    ?? ""),
+    income_per_person:      String(finSrc.income_per_person      ?? ""),
+    monthly_expenses_total: String(finSrc.monthly_expenses_total ?? ""),
+    rent:                   String(finSrc.rent                   ?? ""),
+    electricity:            String(finSrc.electricity            ?? ""),
+    gas_cost:               String(finSrc.gas_cost               ?? ""),
+    medications:            String(finSrc.medications            ?? ""),
+    other_expenses:         String(finSrc.other_expenses         ?? ""),
+    needs_and_expectations: finSrc.needs_and_expectations        ?? "",
+  };
+
+  const normalizedFamily = family ? {
+    ...family,
+    members: (family.members ?? []).map((m: any, i: number) => ({
+      ...m,
+      id: m.id ?? String(Date.now() + i),
+    })),
+  } : undefined;
+
+  const normalizedHealth = health ? {
+    ...health,
+    chronically_ill_count: health.chronically_ill_count ?? health.chronically_ill_persons ?? "",
+    addiction_types: health.addiction_types
+      ?? (health.addiction_type ? [health.addiction_type] : []),
+  } : undefined;
+
+  return {
+    ...rest,
+    employment,
+    financial,
+    ...(normalizedFamily  ? { family: normalizedFamily }  : {}),
+    ...(normalizedHealth  ? { health: normalizedHealth }  : {}),
+  };
+}
+
 export const saveDraft = async (formData: any, interviewId?: string | null): Promise<Interview> => {
   if (interviewId) {
     return (await api.patch(`/interviews/${interviewId}`, { form_data: formData })).data;

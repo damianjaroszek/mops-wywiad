@@ -9,7 +9,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, FAB, Divider, ActivityIndicator, Chip } from "react-native-paper";
 import { router } from "expo-router";
-import { listInterviews, deleteInterview, getInterview, Interview } from "@/services/api";
+import { listInterviews, deleteInterview, getInterview, normalizeFormDataForStore, Interview } from "@/services/api";
 import { useInterviewStore } from "@/store/interviewStore";
 import { colors, spacing, fontSize, shadow } from "@/constants/theme";
 
@@ -49,8 +49,21 @@ export default function HomeScreen() {
     setResumingId(id);
     try {
       const interview = await getInterview(id);
-      loadInterviewData(id, interview.form_data);
+      loadInterviewData(id, normalizeFormDataForStore(interview.form_data));
       router.push("/interview/summary");
+    } catch (e: any) {
+      Alert.alert("Błąd", e.message);
+    } finally {
+      setResumingId(null);
+    }
+  };
+
+  const handleEdit = async (id: string) => {
+    setResumingId(id);
+    try {
+      const interview = await getInterview(id);
+      loadInterviewData(id, normalizeFormDataForStore(interview.form_data));
+      router.push("/interview/step1");
     } catch (e: any) {
       Alert.alert("Błąd", e.message);
     } finally {
@@ -98,6 +111,7 @@ export default function HomeScreen() {
           ) : (
             <Button mode="text" compact onPress={() => router.push(`/interview/result?id=${item.id}`)}>Otwórz</Button>
           )}
+          <Button mode="text" compact loading={isResuming} onPress={() => handleEdit(item.id)}>Edytuj</Button>
           <Button mode="text" compact textColor={colors.error} onPress={() => handleDelete(item.id, name)}>Usuń</Button>
         </View>
       </TouchableOpacity>

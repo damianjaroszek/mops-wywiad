@@ -10,7 +10,7 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import * as Clipboard from "expo-clipboard";
 import { useInterviewStore } from "@/store/interviewStore";
-import { getInterview, reviseDocument } from "@/services/api";
+import { getInterview, reviseDocument, normalizeFormDataForStore } from "@/services/api";
 import { colors, spacing, fontSize, shadow } from "@/constants/theme";
 
 export default function ResultScreen() {
@@ -23,6 +23,7 @@ export default function ResultScreen() {
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [revising, setRevising] = useState(false);
+  const [editingData, setEditingData] = useState(false);
   const [instruction, setInstruction] = useState("");
   const [reviseOpen, setReviseOpen] = useState(false);
   const interviewId = id || store.interviewId;
@@ -78,6 +79,32 @@ export default function ResultScreen() {
   };
 
   const stripMarkers = (text: string) => text.replace(/[«»]/g, "");
+
+  const handleEditData = () => {
+    if (!interviewId) return;
+    Alert.alert(
+      "Edytuj dane wywiadu",
+      "Przejście do formularza wyczyści obecne pismo. Po edycji wygenerujesz je ponownie.",
+      [
+        { text: "Anuluj", style: "cancel" },
+        {
+          text: "Edytuj",
+          onPress: async () => {
+            setEditingData(true);
+            try {
+              const interview = await getInterview(interviewId);
+              store.loadInterviewData(interviewId, normalizeFormDataForStore(interview.form_data));
+              router.push("/interview/step1");
+            } catch (e: any) {
+              Alert.alert("Błąd", e.message);
+            } finally {
+              setEditingData(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const MAX_FRAGMENT_LEN = 800;
 
@@ -267,6 +294,16 @@ export default function ResultScreen() {
                   Nowy wywiad
                 </Button>
               </View>
+              <Button
+                mode="outlined"
+                onPress={handleEditData}
+                loading={editingData}
+                disabled={editingData}
+                icon="pencil-box-outline"
+                style={styles.editDataBtn}
+              >
+                Edytuj dane wywiadu
+              </Button>
             </View>
           )}
         </KeyboardAvoidingView>
@@ -299,6 +336,7 @@ const styles = StyleSheet.create({
   footerRow:      { flexDirection: "row", gap: spacing.sm },
   shareBtn:       { flex: 1 },
   newBtn:         { flex: 1 },
+  editDataBtn:    { borderColor: colors.secondary },
   noDoc:          { flex: 1, justifyContent: "center", alignItems: "center", padding: spacing.xl, gap: spacing.md },
   noDocText:      { fontSize: fontSize.lg, color: colors.text.secondary },
   fab:            { position: "absolute", right: spacing.md, bottom: 160, backgroundColor: colors.secondary, zIndex: 10, elevation: 6 },
