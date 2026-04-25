@@ -1,7 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git -C c:/Users/W10/mops-starter status)",
+      "Bash(git -C c:/Users/W10/mops-starter diff --stat)",
+      "Bash(git -C c:/Users/W10/mops-starter add frontend/app/interview/step1.tsx frontend/app/interview/step2.tsx frontend/app/interview/step3.tsx frontend/app/interview/step4.tsx frontend/app/interview/step6.tsx)",
+      "Bash(git -C c:/Users/W10/mops-starter commit -m ' *)",
+      "Bash(git -C c:/Users/W10/mops-starter push)",
+      "Bash(npx expo *)"
     ]
   }
 }
