@@ -1,7 +1,7 @@
 /**
  * Krok 3 — Sytuacja zawodowa
  */
-import React from "react";
+import React, { useRef } from "react";
 import { View, ScrollView, Text, KeyboardAvoidingView, Platform } from "react-native";
 import { Button } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -18,6 +18,9 @@ import RadioOptionList from "@/components/ui/RadioOptionList";
 export default function Step3() {
   const store = useInterviewStore();
   const e = store.formData.employment;
+  const scrollRef = useRef<ScrollView>(null);
+
+  const scrollToEnd = () => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
 
   return (
     <SafeAreaView style={cs.safe}>
@@ -28,6 +31,7 @@ export default function Step3() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={cs.scroll}
           keyboardShouldPersistTaps="handled"
         >
@@ -38,7 +42,7 @@ export default function Step3() {
           <RadioOptionList
             options={EMPLOYMENT_STATUS}
             value={e.employment_status}
-            onValueChange={(v) => store.updateEmployment({ employment_status: v })}
+            onValueChange={(v) => { store.updateEmployment({ employment_status: v }); if (v === "bezrobotny") scrollToEnd(); }}
           />
         </View>
 
@@ -48,7 +52,7 @@ export default function Step3() {
             <Text style={cs.fieldLabel}>Zarejestrowany w urzędzie pracy (PUP)?</Text>
             <YesNo value={e.is_registered_unemployed} onChange={(v) => store.updateEmployment({ is_registered_unemployed: v })} />
             <Text style={[cs.fieldLabel, { marginTop: spacing.md }]}>Pobiera zasiłek dla bezrobotnych?</Text>
-            <YesNo value={e.has_unemployment_benefit} onChange={(v) => store.updateEmployment({ has_unemployment_benefit: v })} />
+            <YesNo value={e.has_unemployment_benefit} onChange={(v) => { store.updateEmployment({ has_unemployment_benefit: v }); if (v) scrollToEnd(); }} />
             {e.has_unemployment_benefit && (
               <FormField
                 label="Kwota zasiłku (zł/mies.)"

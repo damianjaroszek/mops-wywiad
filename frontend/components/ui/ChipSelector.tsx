@@ -17,7 +17,7 @@ interface Option {
 }
 
 interface Props {
-  options: Option[];
+  options: readonly Option[];
   value: string;
   onSelect: (v: string) => void;
   variant?: "outline" | "filled";

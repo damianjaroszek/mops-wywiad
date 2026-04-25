@@ -21,8 +21,11 @@ export default function Step1() {
   const p = formData.personal;
 
   const handleNext = () => {
-    if (!p.first_name || !p.last_name) {
-      Alert.alert("Brak danych", "Imię i nazwisko są wymagane.");
+    const missing: string[] = [];
+    if (!p.first_name || !p.last_name) missing.push("imię i nazwisko");
+    if (p.help_reasons.length === 0) missing.push("co najmniej jedną przyczynę ubiegania się o pomoc");
+    if (missing.length > 0) {
+      Alert.alert("Uzupełnij wymagane pola", `Podaj: ${missing.join(" oraz ")}.`);
       return;
     }
     setCurrentStep(2);

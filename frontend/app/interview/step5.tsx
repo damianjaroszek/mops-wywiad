@@ -163,7 +163,19 @@ export default function Step5() {
               <TouchableOpacity onPress={() => openEditForm(m)} style={styles.editBtn}>
                 <Text style={styles.editText}>✎</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => store.removeFamilyMember(m.id)} style={styles.removeBtn}>
+              <TouchableOpacity
+                onPress={() =>
+                  Alert.alert(
+                    "Usuń członka rodziny",
+                    `Czy na pewno chcesz usunąć „${m.name}" z listy?`,
+                    [
+                      { text: "Anuluj", style: "cancel" },
+                      { text: "Usuń", style: "destructive", onPress: () => store.removeFamilyMember(m.id) },
+                    ]
+                  )
+                }
+                style={styles.removeBtn}
+              >
                 <Text style={styles.removeText}>✕</Text>
               </TouchableOpacity>
             </View>

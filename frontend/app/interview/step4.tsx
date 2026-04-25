@@ -1,7 +1,7 @@
 /**
  * Krok 4 — Sytuacja zdrowotna
  */
-import React from "react";
+import React, { useRef } from "react";
 import { View, ScrollView, StyleSheet, Text, TouchableOpacity, KeyboardAvoidingView, Platform } from "react-native";
 import { Button } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -19,6 +19,9 @@ export default function Step4() {
   const store = useInterviewStore();
   const hl = store.formData.health;
 
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollToEnd = () => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
+
   const handleNext = () => {
     store.setCurrentStep(5);
     router.push("/interview/step5");
@@ -32,7 +35,7 @@ export default function Step4() {
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <ScrollView contentContainerStyle={cs.scroll} keyboardShouldPersistTaps="handled">
+        <ScrollView ref={scrollRef} contentContainerStyle={cs.scroll} keyboardShouldPersistTaps="handled">
         <Text style={cs.title}>Sytuacja zdrowotna</Text>
 
         <View style={cs.card}>
@@ -66,7 +69,7 @@ export default function Step4() {
           <Text style={cs.fieldLabel}>Orzeczenie o niepełnosprawności?</Text>
           <YesNo
             value={hl.has_disability_certificate}
-            onChange={(v) => store.updateHealth({ has_disability_certificate: v, disability_degree: v ? hl.disability_degree : "" })}
+            onChange={(v) => { store.updateHealth({ has_disability_certificate: v, disability_degree: v ? hl.disability_degree : "" }); if (v) scrollToEnd(); }}
           />
           {hl.has_disability_certificate && (
             <>
@@ -85,7 +88,7 @@ export default function Step4() {
           <Text style={cs.fieldLabel}>Stwierdzono uzależnienie?</Text>
           <YesNo
             value={hl.has_addiction}
-            onChange={(v) => store.updateHealth({ has_addiction: v, addiction_types: v ? hl.addiction_types : [] })}
+            onChange={(v) => { store.updateHealth({ has_addiction: v, addiction_types: v ? hl.addiction_types : [] }); if (v) scrollToEnd(); }}
           />
           {hl.has_addiction && (
             <>

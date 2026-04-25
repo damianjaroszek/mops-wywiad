@@ -3,7 +3,7 @@
  * Zawiera: pasek aplikacji, pasek postępu, nawigator kroków
  */
 import React from "react";
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert, ViewStyle, StyleProp } from "react-native";
 import { router } from "expo-router";
 import { colors, spacing, fontSize } from "@/constants/theme";
 
@@ -65,25 +65,32 @@ export default function StepHeader({ step }: Props) {
             const isDone = n < step;
             const isFuture = n > step;
 
+            const chipStyle: StyleProp<ViewStyle> = [
+              styles.chip,
+              isDone && styles.chipDone,
+              isActive && styles.chipActive,
+              isFuture && styles.chipFuture,
+            ];
+            const chipContent = isDone ? (
+              <Text style={[styles.chipText, styles.chipTextDone]}>✓ {label}</Text>
+            ) : (
+              <Text style={[styles.chipText, isActive && styles.chipTextActive, isFuture && styles.chipTextFuture]}>
+                {n}. {label}
+              </Text>
+            );
+
+            if (isFuture) {
+              return <View key={n} style={chipStyle}>{chipContent}</View>;
+            }
+
             return (
               <TouchableOpacity
                 key={n}
-                style={[
-                  styles.chip,
-                  isDone && styles.chipDone,
-                  isActive && styles.chipActive,
-                  isFuture && styles.chipFuture,
-                ]}
+                style={chipStyle}
                 onPress={() => router.push(route as any)}
                 activeOpacity={0.7}
               >
-                {isDone ? (
-                  <Text style={[styles.chipText, styles.chipTextDone]}>✓ {label}</Text>
-                ) : (
-                  <Text style={[styles.chipText, isActive && styles.chipTextActive, isFuture && styles.chipTextFuture]}>
-                    {n}. {label}
-                  </Text>
-                )}
+                {chipContent}
               </TouchableOpacity>
             );
           })}

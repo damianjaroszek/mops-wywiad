@@ -13,7 +13,7 @@ interface Option {
 }
 
 interface Props {
-  options: Option[];
+  options: readonly Option[];
   value: string;
   onValueChange: (v: string) => void;
 }
