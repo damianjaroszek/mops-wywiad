@@ -78,11 +78,13 @@ export default function ResultScreen() {
 
   const stripMarkers = (text: string) => text.replace(/[«»]/g, "");
 
+  const MAX_FRAGMENT_LEN = 800;
+
   const handleOpenRevise = async () => {
     try {
       const clip = await Clipboard.getStringAsync();
       const trimmed = clip?.trim() ?? "";
-      if (trimmed.length > 3 && document.includes(trimmed)) {
+      if (trimmed.length > 3 && trimmed.length <= MAX_FRAGMENT_LEN && document.includes(trimmed)) {
         setSelectedText(trimmed);
       } else {
         setSelectedText("");
