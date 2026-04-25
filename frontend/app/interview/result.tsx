@@ -219,6 +219,7 @@ export default function ResultScreen() {
                 numberOfLines={2}
                 textAlignVertical="top"
                 editable={!revising}
+                autoFocus={!selectedText}
               />
               <View style={styles.revisePanelRow}>
                 <TextInput
@@ -231,7 +232,7 @@ export default function ResultScreen() {
                   numberOfLines={3}
                   textAlignVertical="top"
                   editable={!revising}
-                  autoFocus
+                  autoFocus={!!selectedText}
                 />
                 <TouchableOpacity
                   style={[styles.reviseSendBtn, (revising || !instruction.trim()) && styles.reviseSendBtnDisabled]}
