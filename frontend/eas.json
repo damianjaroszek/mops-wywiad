@@ -4,6 +4,9 @@
   },
   "build": {
     "preview": {
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://mops-wywiad-1.onrender.com"
+      },
       "android": {
         "buildType": "apk",
         "gradleCommand": ":app:assembleRelease"
