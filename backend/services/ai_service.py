@@ -233,9 +233,10 @@ def revise_document(current_document: str, instruction: str, selected_fragment: 
     """Nanosi poprawkę na gotowe pismo według wskazówki pracownika socjalnego."""
     fragment_block = ""
     if selected_fragment.strip():
+        safe = selected_fragment.strip().replace("</fragment>", "")
         fragment_block = (
             f"ZAZNACZONY FRAGMENT (zmień WYŁĄCZNIE ten fragment — reszta pisma bez zmian):\n"
-            f"<fragment>{selected_fragment.strip()}</fragment>\n\n"
+            f"<fragment>{safe}</fragment>\n\n"
         )
 
     prompt = f"""Jesteś asystentem pracownika socjalnego. Masz gotowe pismo urzędowe (wywiad środowiskowy) i instrukcję co w nim poprawić lub uzupełnić.
