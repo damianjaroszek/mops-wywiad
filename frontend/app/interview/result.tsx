@@ -216,7 +216,7 @@ export default function ResultScreen() {
                 placeholder="Wklej fragment który chcesz zmienić (opcjonalnie)"
                 placeholderTextColor={colors.text.disabled}
                 multiline
-                numberOfLines={2}
+                numberOfLines={3}
                 textAlignVertical="top"
                 editable={!revising}
                 autoFocus={!selectedText}
@@ -314,5 +314,5 @@ const styles = StyleSheet.create({
   highlighted:        { backgroundColor: "#FFEE58", color: "#1A1A1A", fontWeight: "700" },
   clearHighlightBtn:  { marginTop: 12, alignSelf: "flex-end" },
   clearHighlightText: { fontSize: 11, color: colors.text.disabled, textDecorationLine: "underline" },
-  fragmentInput:      { borderWidth: 1, borderColor: colors.primaryLight, borderRadius: 6, padding: spacing.sm, fontSize: fontSize.sm, color: colors.text.primary, minHeight: 44, maxHeight: 80, backgroundColor: colors.primaryLight, textAlignVertical: "top", marginBottom: spacing.xs },
+  fragmentInput:      { borderWidth: 1, borderColor: colors.primaryLight, borderRadius: 6, padding: spacing.sm, fontSize: fontSize.sm, color: colors.text.primary, minHeight: 44, maxHeight: 120, backgroundColor: colors.primaryLight, textAlignVertical: "top", marginBottom: spacing.xs },
 });
