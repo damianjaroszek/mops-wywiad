@@ -21,17 +21,27 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 
 export default function HomeScreen() {
   const [interviews, setInterviews] = useState<Interview[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [waking, setWaking] = useState(false);
   const { resetForm, loadInterviewData } = useInterviewStore();
   const [resumingId, setResumingId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const isNetworkError = (e: any) =>
+    e?.message?.toLowerCase().includes("network") || e?.message?.includes("połączenia");
+
+  const load = useCallback(async (isRefresh = false) => {
     try {
       const data = await listInterviews();
       setInterviews(data.items);
+      setWaking(false);
     } catch (e: any) {
-      if (!refreshing) Alert.alert("Błąd", e.message);
+      if (isNetworkError(e)) {
+        setWaking(true);
+        setTimeout(() => load(), 20000);
+      } else if (!isRefresh) {
+        Alert.alert("Błąd", e.message);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -124,6 +134,12 @@ export default function HomeScreen() {
         <Text style={styles.headerTitle}>MOPS Wywiad</Text>
         <Text style={styles.headerSub}>Wywiady środowiskowe</Text>
       </View>
+      {waking && (
+        <View style={styles.wakingBanner}>
+          <ActivityIndicator size="small" color={colors.primary} style={{ marginRight: spacing.sm }} />
+          <Text style={styles.wakingText}>Serwer się uruchamia, proszę czekać… (~30 s)</Text>
+        </View>
+      )}
       {loading ? (
         <ActivityIndicator style={{ flex: 1 }} color={colors.primary} />
       ) : (
@@ -133,7 +149,7 @@ export default function HomeScreen() {
           renderItem={renderItem}
           ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
           contentContainerStyle={styles.list}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} />}
           ListEmptyComponent={
             <View style={styles.empty}>
               <Text style={styles.emptyText}>Brak wywiadów</Text>
@@ -163,4 +179,6 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: fontSize.lg, color: colors.text.secondary, fontWeight: "600" },
   emptySubText: { fontSize: fontSize.sm, color: colors.text.disabled, marginTop: 4 },
   fab: { position: "absolute", right: spacing.lg, bottom: spacing.xl, backgroundColor: colors.primary },
+  wakingBanner: { flexDirection: "row", alignItems: "center", backgroundColor: "#FFF9C4", paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: "#FDD835" },
+  wakingText: { flex: 1, fontSize: fontSize.sm, color: "#5D4037" },
 });
