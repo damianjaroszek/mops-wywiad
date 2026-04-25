@@ -28,6 +28,7 @@ export default function ResultScreen() {
   const interviewId = id || store.interviewId;
 
   useEffect(() => {
+    setMarkedDocument(null);
     if (id && !store.generatedDocument) {
       setLoading(true);
       getInterview(id)
