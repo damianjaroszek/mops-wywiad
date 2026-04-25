@@ -16,8 +16,20 @@ _style_examples: str | None = None
 
 MODEL_GENERATE = "claude-haiku-4-5-20251001"
 MODEL_EDIT     = "claude-sonnet-4-6"
-MAX_TOKENS = 4096
+MAX_TOKENS = 6000
 EXAMPLES_DIR = Path(__file__).parent.parent / "style_examples"
+_TOKEN_WARN_THRESHOLD = 0.9
+
+
+def _log_usage(label: str, message_obj) -> None:
+    out = message_obj.usage.output_tokens
+    ratio = out / MAX_TOKENS
+    log = logger.warning if ratio >= _TOKEN_WARN_THRESHOLD else logger.info
+    log(
+        f"{label}: in={message_obj.usage.input_tokens} "
+        f"out={out}/{MAX_TOKENS} ({ratio:.0%})"
+        + (" ⚠ BLISKI LIMITU" if ratio >= _TOKEN_WARN_THRESHOLD else "")
+    )
 
 
 def get_anthropic() -> Anthropic:
@@ -265,10 +277,7 @@ Poprawione pismo:"""
         temperature=0.1,
     )
     revised = message.content[0].text
-    logger.info(
-        f"Rewizja zakończona: {len(revised)} znaków, "
-        f"tokeny: in={message.usage.input_tokens} out={message.usage.output_tokens}"
-    )
+    _log_usage(f"Rewizja zakończona ({len(revised)} znaków)", message)
     return revised
 
 
@@ -304,10 +313,7 @@ PISMO DO REDAKCJI:
         temperature=0.1,
     )
     edited = message.content[0].text
-    logger.info(
-        f"Redakcja zakończona: {len(edited)} znaków, "
-        f"tokeny: in={message.usage.input_tokens} out={message.usage.output_tokens}"
-    )
+    _log_usage(f"Redakcja zakończona ({len(edited)} znaków)", message)
     return edited
 
 
@@ -326,10 +332,7 @@ def generate_document(form_data: dict, legal_context: str, worker_name: str) -> 
         temperature=0.2,
     )
     draft = draft_msg.content[0].text
-    logger.info(
-        f"Szkic gotowy: {len(draft)} znaków, "
-        f"tokeny: in={draft_msg.usage.input_tokens} out={draft_msg.usage.output_tokens}"
-    )
+    _log_usage(f"Szkic gotowy ({len(draft)} znaków)", draft_msg)
 
     logger.info(f"Redaguję przez {MODEL_EDIT}...")
     document = _edit_document(draft)
