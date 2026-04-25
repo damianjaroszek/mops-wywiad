@@ -105,11 +105,27 @@ export default function ReviseScreen() {
           </View>
         ) : (
           <View style={styles.panel}>
+            <View style={styles.fragmentHeader}>
+              <Text style={styles.fragmentLabel}>Fragment do zmiany (opcjonalnie)</Text>
+              <TouchableOpacity
+                onPress={async () => {
+                  try {
+                    const clip = await Clipboard.getStringAsync();
+                    const trimmed = clip?.trim() ?? "";
+                    if (trimmed.length > 3) setFragment(trimmed);
+                  } catch {}
+                }}
+                style={styles.pasteBtn}
+                disabled={revising}
+              >
+                <Text style={styles.pasteBtnText}>📋 Wklej ze schowka</Text>
+              </TouchableOpacity>
+            </View>
             <TextInput
               style={styles.fragmentInput}
               value={fragment}
               onChangeText={setFragment}
-              placeholder="Fragment do zmiany (opcjonalnie — wklej lub zaznacz z dokumentu)"
+              placeholder="Skopiuj fragment z dokumentu powyżej i wklej tutaj"
               placeholderTextColor={colors.text.disabled}
               multiline
               numberOfLines={3}
@@ -161,6 +177,10 @@ const styles = StyleSheet.create({
   docText:          { fontFamily: "monospace", fontSize: 12, lineHeight: 20, color: colors.text.primary },
   highlighted:      { backgroundColor: "#FFEE58", color: "#1A1A1A", fontWeight: "700" },
   panel:            { backgroundColor: colors.surface, borderTopWidth: 2, borderTopColor: colors.primary, padding: spacing.md, gap: spacing.sm },
+  fragmentHeader:   { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
+  fragmentLabel:    { fontSize: fontSize.sm, color: colors.text.secondary, fontWeight: "600" },
+  pasteBtn:         { paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.primaryLight },
+  pasteBtnText:     { fontSize: fontSize.sm, color: colors.primary, fontWeight: "600" },
   fragmentInput:    { borderWidth: 1, borderColor: colors.primaryLight, borderRadius: 6, padding: spacing.sm, fontSize: fontSize.sm, color: colors.text.primary, minHeight: 44, maxHeight: 120, backgroundColor: colors.primaryLight, textAlignVertical: "top" },
   instructionRow:   { flexDirection: "row", alignItems: "flex-end", gap: spacing.xs },
   instructionInput: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: spacing.sm, fontSize: fontSize.sm, color: colors.text.primary, minHeight: 60, maxHeight: 100, backgroundColor: colors.background, textAlignVertical: "top" },
