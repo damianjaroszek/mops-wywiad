@@ -45,7 +45,7 @@ export interface FormData {
   health: {
     chronically_ill_count: string; illness_types: string;
     has_health_insurance: boolean | null; has_disability_certificate: boolean | null;
-    disability_degree: string; has_addiction: boolean | null;
+    disability_degree: string; has_incapacity_certificate: boolean | null; has_addiction: boolean | null;
     addiction_types: string[]; additional_health_info: string;
   };
   financial: {
@@ -87,7 +87,7 @@ const INIT: FormData = {
   housing: { apartment_type: "", rooms_count: "", floor: "", has_cold_water: true, has_hot_water: false, has_bathroom: false, has_wc: false, heating_type: "", has_gas: false, apartment_condition: "", sleeping_places: "" },
   family: { members: [], has_conflicts: null, conflict_description: "", has_domestic_violence: null, violence_description: "", has_childcare_issues: null, childcare_description: "" },
   employment: { employment_status: "", is_registered_unemployed: null, has_unemployment_benefit: null, unemployment_benefit_amount: "", qualifications: "", last_employment: "" },
-  health: { chronically_ill_count: "", illness_types: "", has_health_insurance: null, has_disability_certificate: null, disability_degree: "", has_addiction: null, addiction_types: [], additional_health_info: "" },
+  health: { chronically_ill_count: "", illness_types: "", has_health_insurance: null, has_disability_certificate: null, disability_degree: "", has_incapacity_certificate: null, has_addiction: null, addiction_types: [], additional_health_info: "" },
   financial: { total_family_income: "", income_per_person: "", monthly_expenses_total: "", rent: "", electricity: "", gas_cost: "", medications: "", other_expenses: "", needs_and_expectations: "" },
 };
 

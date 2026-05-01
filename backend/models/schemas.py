@@ -90,6 +90,7 @@ class HealthData(BaseModel):
     has_health_insurance: Optional[bool] = None
     has_disability_certificate: Optional[bool] = None
     disability_degree: Optional[str] = None
+    has_incapacity_certificate: Optional[bool] = None
     has_addiction: Optional[bool] = None
     addiction_type: Optional[str] = None
     additional_health_info: Optional[str] = Field(None, max_length=2000)

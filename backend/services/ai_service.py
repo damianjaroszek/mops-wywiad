@@ -215,6 +215,7 @@ SYTUACJA ZDROWOTNA:
   Schorzenia: {_fmt(hl.get("illness_types"))}
   Ubezpieczenie zdrowotne: {_fmt(hl.get("has_health_insurance"))}
   Orzeczenie o niepełnosprawności: {_fmt(hl.get("has_disability_certificate"))} | Stopień: {_fmt(hl.get("disability_degree"))}
+  Orzeczenie o niezdolności do samodzielnej egzystencji: {_fmt(hl.get("has_incapacity_certificate"))}
   Uzależnienie: {_fmt(hl.get("has_addiction"))} | Rodzaj: {_fmt(hl.get("addiction_type"))}
   Uwagi zdrowotne: {_fmt(hl.get("additional_health_info"))}
 

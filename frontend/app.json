@@ -37,6 +37,12 @@
     "scheme": "mops-wywiad",
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d58fd717-9496-4592-88ae-a63ba0b1854b"
+      }
     }
   }
 }

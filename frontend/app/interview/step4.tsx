@@ -83,6 +83,13 @@ export default function Step4() {
           )}
         </View>
 
+          <Text style={[cs.fieldLabel, { marginTop: spacing.md }]}>Orzeczenie o niezdolności do samodzielnej egzystencji?</Text>
+          <YesNo
+            value={hl.has_incapacity_certificate}
+            onChange={(v) => store.updateHealth({ has_incapacity_certificate: v })}
+          />
+        </View>
+
         <View style={cs.card}>
           <Text style={cs.cardTitle}>Uzależnienia</Text>
           <Text style={cs.fieldLabel}>Stwierdzono uzależnienie?</Text>
