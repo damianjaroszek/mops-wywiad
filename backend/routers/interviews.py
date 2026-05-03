@@ -25,7 +25,7 @@ async def create_interview(request: Request, body: CreateInterviewRequest):
     """Tworzy nowy wywiad (szkic)."""
     supabase = get_supabase()
     data = {
-        "worker_name": body.worker_name,
+        "worker_name": "Pracownik socjalny",
         "form_data": body.form_data.model_dump(),
         "status": "draft",
     }

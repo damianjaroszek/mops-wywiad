@@ -43,11 +43,11 @@ def build_semantic_query(form_data: dict) -> str:
     """
     parts = ["Rodzinny wywiad środowiskowy. Pomoc społeczna."]
 
-    personal = form_data.get("personal", {})
+    personal = form_data.get("personal") or {}
     if reasons := personal.get("help_reasons", []):
         parts.append(f"Przyczyny pomocy: {', '.join(reasons)}.")
 
-    employment = form_data.get("employment", {})
+    employment = form_data.get("employment") or {}
     if status := employment.get("employment_status"):
         parts.append(f"Sytuacja zawodowa: {status}.")
     if employment.get("is_registered_unemployed"):
@@ -55,21 +55,24 @@ def build_semantic_query(form_data: dict) -> str:
     if employment.get("needs_and_expectations"):
         parts.append(f"Potrzeby: {employment['needs_and_expectations'][:300]}.")
 
-    health = form_data.get("health", {})
+    health = form_data.get("health") or {}
     if health.get("has_disability_certificate"):
         deg = health.get("disability_degree", "")
         parts.append(f"Niepełnosprawność stopień {deg}.")
-    if health.get("chronically_ill_persons"):
-        parts.append(f"Długotrwała choroba: {health['chronically_ill_persons'][:200]}.")
+    if health.get("chronically_ill_persons") or health.get("chronically_ill_count"):
+        val = health.get("chronically_ill_persons") or health.get("chronically_ill_count", "")
+        parts.append(f"Długotrwała choroba: {str(val)[:200]}.")
     if health.get("has_addiction"):
-        parts.append(f"Uzależnienie: {health.get('addiction_type', '')}.")
+        types = health.get("addiction_types") or []
+        label = ", ".join(types) if types else health.get("addiction_type", "")
+        parts.append(f"Uzależnienie: {label}.")
 
-    family = form_data.get("family", {})
+    family = form_data.get("family") or {}
     if family.get("has_domestic_violence"):
         parts.append("Przemoc w rodzinie.")
     if family.get("has_childcare_issues"):
         parts.append("Problemy opiekuńczo-wychowawcze.")
-    members_count = len(family.get("members", []))
+    members_count = len(family.get("members") or [])
     if members_count > 0:
         parts.append(f"Rodzina wieloosobowa ({members_count} osób).")
 

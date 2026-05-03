@@ -1,8 +1,10 @@
 /**
  * Krok 4 — Sytuacja zdrowotna
  */
-import React, { useRef } from "react";
-import { View, ScrollView, StyleSheet, Text, TouchableOpacity, KeyboardAvoidingView, Platform } from "react-native";
+import React from "react";
+import { View, ScrollView, StyleSheet, Text, KeyboardAvoidingView, Platform } from "react-native";
+import { useScrollGuard } from "@/hooks/useScrollGuard";
+import ScrollEndBanner from "@/components/ui/ScrollEndBanner";
 import { Button } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -13,19 +15,33 @@ import { cs } from "@/constants/commonStyles";
 import FormField from "@/components/ui/FormField";
 import StepHeader from "@/components/ui/StepHeader";
 import YesNo from "@/components/ui/YesNo";
-import RadioOptionList from "@/components/ui/RadioOptionList";
+import ChipSelector from "@/components/ui/ChipSelector";
+import ScanSectionButton from "@/components/ui/ScanSectionButton";
 
 export default function Step4() {
   const store = useInterviewStore();
   const hl = store.formData.health;
+  const { scrollRef, isAtBottom, scrollProps, tryNext } = useScrollGuard();
 
-  const scrollRef = useRef<ScrollView>(null);
-  const scrollToEnd = () => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
-
-  const handleNext = () => {
-    store.setCurrentStep(5);
-    router.push("/interview/step5");
+  const handleScanApply = (data: Record<string, any>) => {
+    const toStr = (v: any) => (v != null && v !== "" ? String(v) : "");
+    store.updateHealth({
+      chronically_ill_count:      toStr(data.chronically_ill_count)      || hl.chronically_ill_count,
+      illness_types:              toStr(data.illness_types)              || hl.illness_types,
+      disability_degree:          toStr(data.disability_degree)          || hl.disability_degree,
+      additional_health_info:     toStr(data.additional_health_info)     || hl.additional_health_info,
+      addiction_types:            Array.isArray(data.addiction_types) && data.addiction_types.length > 0
+                                    ? data.addiction_types
+                                    : hl.addiction_types,
+      ...(data.has_health_insurance        != null ? { has_health_insurance:        data.has_health_insurance        } : {}),
+      ...(data.has_disability_certificate  != null ? { has_disability_certificate:  data.has_disability_certificate  } : {}),
+      ...(data.has_incapacity_certificate  != null ? { has_incapacity_certificate:  data.has_incapacity_certificate  } : {}),
+      ...(data.has_addiction               != null ? { has_addiction:               data.has_addiction               } : {}),
+    });
   };
+
+  const handleNext = () =>
+    tryNext(() => { store.setCurrentStep(5); router.push("/interview/step5"); });
 
   return (
     <SafeAreaView style={cs.safe}>
@@ -35,8 +51,9 @@ export default function Step4() {
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <ScrollView ref={scrollRef} contentContainerStyle={cs.scroll} keyboardShouldPersistTaps="handled">
+        <ScrollView ref={scrollRef} {...scrollProps} contentContainerStyle={cs.scroll} keyboardShouldPersistTaps="handled">
         <Text style={cs.title}>Sytuacja zdrowotna</Text>
+        <ScanSectionButton step={4} onApply={handleScanApply} />
 
         <View style={cs.card}>
           <Text style={cs.cardTitle}>Choroby i ubezpieczenie</Text>
@@ -69,20 +86,19 @@ export default function Step4() {
           <Text style={cs.fieldLabel}>Orzeczenie o niepełnosprawności?</Text>
           <YesNo
             value={hl.has_disability_certificate}
-            onChange={(v) => { store.updateHealth({ has_disability_certificate: v, disability_degree: v ? hl.disability_degree : "" }); if (v) scrollToEnd(); }}
+            onChange={(v) => store.updateHealth({ has_disability_certificate: v, disability_degree: v ? hl.disability_degree : "" })}
           />
           {hl.has_disability_certificate && (
             <>
               <Text style={[cs.fieldLabel, { marginTop: spacing.md }]}>Stopień niepełnosprawności</Text>
-              <RadioOptionList
+              <ChipSelector
                 options={DISABILITY_DEGREES}
                 value={hl.disability_degree}
-                onValueChange={(v) => store.updateHealth({ disability_degree: v })}
+                onSelect={(v) => store.updateHealth({ disability_degree: v })}
+                size="md"
               />
             </>
           )}
-        </View>
-
           <Text style={[cs.fieldLabel, { marginTop: spacing.md }]}>Orzeczenie o niezdolności do samodzielnej egzystencji?</Text>
           <YesNo
             value={hl.has_incapacity_certificate}
@@ -95,32 +111,18 @@ export default function Step4() {
           <Text style={cs.fieldLabel}>Stwierdzono uzależnienie?</Text>
           <YesNo
             value={hl.has_addiction}
-            onChange={(v) => { store.updateHealth({ has_addiction: v, addiction_types: v ? hl.addiction_types : [] }); if (v) scrollToEnd(); }}
+            onChange={(v) => store.updateHealth({ has_addiction: v, addiction_types: v ? hl.addiction_types : [] })}
           />
           {hl.has_addiction && (
             <>
               <Text style={[cs.fieldLabel, { marginTop: spacing.md }]}>Rodzaj uzależnienia (wielokrotny wybór)</Text>
-              <View style={styles.chipGroup}>
-                {ADDICTION_TYPES.map((opt) => {
-                  const selected = hl.addiction_types.includes(opt.value);
-                  return (
-                    <TouchableOpacity
-                      key={opt.value}
-                      style={[styles.chip, selected && styles.chipActive]}
-                      onPress={() => {
-                        const next = selected
-                          ? hl.addiction_types.filter((t) => t !== opt.value)
-                          : [...hl.addiction_types, opt.value];
-                        store.updateHealth({ addiction_types: next });
-                      }}
-                    >
-                      <Text style={[styles.chipText, selected && styles.chipTextActive]}>
-                        {selected ? "✓ " : ""}{opt.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+              <ChipSelector
+                multi
+                options={ADDICTION_TYPES}
+                values={hl.addiction_types}
+                onSelect={(v) => store.updateHealth({ addiction_types: v })}
+                size="md"
+              />
             </>
           )}
         </View>
@@ -138,6 +140,7 @@ export default function Step4() {
         </View>
         </ScrollView>
 
+        <ScrollEndBanner visible={!isAtBottom} />
         <View style={cs.footer}>
           <Button mode="contained" onPress={handleNext} style={cs.nextBtn} contentStyle={{ paddingVertical: 8 }} icon="arrow-right">
             Dalej
@@ -148,11 +151,4 @@ export default function Step4() {
   );
 }
 
-const styles = StyleSheet.create({
-  // Wielokrotny wybór uzależnień
-  chipGroup:     { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginBottom: spacing.sm },
-  chip:          { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 20, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.background },
-  chipActive:    { backgroundColor: colors.primaryLight, borderColor: colors.primary },
-  chipText:      { fontSize: fontSize.sm, color: colors.text.secondary, fontWeight: "500" },
-  chipTextActive:{ color: colors.primary, fontWeight: "700" },
-});
+const styles = StyleSheet.create({});

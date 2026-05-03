@@ -4,6 +4,7 @@ AI Service — generowanie wywiadu środowiskowego przez Claude Haiku
 import os
 import re
 import logging
+from datetime import date
 from pathlib import Path
 from anthropic import Anthropic
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -109,7 +110,10 @@ def _build_system_prompt() -> str:
         "PODSTAWA PRAWNA dostarczonej w prompcie. Jeśli danego twierdzenia tam nie ma — "
         "nie pisz go. Wolisz napisać mniej niż napisać coś nieprawdziwego.\n"
         "3. Cytuj wyłącznie przepisy z dostarczonej sekcji PODSTAWA PRAWNA — "
-        "nie przywołuj z pamięci artykułów których tam nie ma."
+        "nie przywołuj z pamięci artykułów których tam nie ma.\n"
+        "4. WIEK — zawsze podawaj jako liczbę lat (np. 'lat 45'). NIGDY nie pisz daty "
+        "urodzenia ani nie dekoduj PESEL w treści pisma. Data urodzenia nie należy do "
+        "formalnego opisu — jest tylko w rubryce PESEL."
     )
     if not examples:
         return base
@@ -122,6 +126,33 @@ def _build_system_prompt() -> str:
     )
 
 
+def _age_from_date(birth_date_str: str) -> str:
+    """Oblicza wiek na podstawie daty urodzenia w formacie dd.mm.rrrr."""
+    if not birth_date_str:
+        return "nie podano"
+    try:
+        parts = birth_date_str.replace("-", ".").split(".")
+        if len(parts) == 3:
+            day, month, year = int(parts[0]), int(parts[1]), int(parts[2])
+            today = date.today()
+            age = today.year - year - ((today.month, today.day) < (month, day))
+            return f"{age} lat"
+    except (ValueError, IndexError):
+        pass
+    return "nie podano"
+
+
+def _age_from_year(birth_year) -> str:
+    """Oblicza wiek na podstawie samego roku urodzenia."""
+    if not birth_year:
+        return "nie podano"
+    try:
+        age = date.today().year - int(birth_year)
+        return f"{age} lat"
+    except (ValueError, TypeError):
+        return "nie podano"
+
+
 def _fmt(val, fallback="nie podano") -> str:
     if val is None:
         return fallback
@@ -132,23 +163,112 @@ def _fmt(val, fallback="nie podano") -> str:
     return str(val) if str(val).strip() else fallback
 
 
-def build_prompt(form_data: dict, legal_context: str, worker_name: str) -> str:
-    p = form_data.get("personal", {})
-    h = form_data.get("housing", {})
-    e = form_data.get("employment", {})
-    hl = form_data.get("health", {})
-    fam = form_data.get("family", {})
+def _to_f(val) -> float:
+    """Bezpieczna konwersja na float — obsługuje None, '', przecinek (pl.)."""
+    if val is None:
+        return 0.0
+    try:
+        return float(str(val).replace(",", ".").replace("\xa0", "").replace(" ", ""))
+    except (ValueError, TypeError):
+        return 0.0
 
-    members = fam.get("members", [])
+
+HELP_FORM_LABELS: dict[str, str] = {
+    "zasilek_staly":           "Zasiłek stały (art. 37 u.p.s.)",
+    "zasilek_okresowy":        "Zasiłek okresowy (art. 38 u.p.s.)",
+    "zasilek_celowy":          "Zasiłek celowy (art. 39 u.p.s.)",
+    "zasilek_celowy_specjalny":"Zasiłek celowy specjalny (art. 41 u.p.s.)",
+    "uslug_opiek":             "Usługi opiekuńcze (art. 50 u.p.s.)",
+    "uslug_spec":              "Specjalistyczne usługi opiekuńcze (art. 50 ust. 4 u.p.s.)",
+    "praca_socjalna":          "Praca socjalna (art. 45 u.p.s.)",
+    "poradnictwo":             "Poradnictwo specjalistyczne (art. 46 u.p.s.)",
+    "posilek":                 "Pomoc w postaci posiłku / dożywianie (art. 48b u.p.s.)",
+    "schronienie":             "Schronienie (art. 48 u.p.s.)",
+    "ubranie":                 "Niezbędne ubranie (art. 48 u.p.s.)",
+    "interwencja_kryzysowa":   "Interwencja kryzysowa (art. 47 u.p.s.)",
+}
+
+
+def build_prompt(form_data: dict, legal_context: str) -> str:
+    # `or {}` zabezpiecza przed None (Pydantic zapisuje None dla opcjonalnych sekcji)
+    p   = form_data.get("personal")   or {}
+    h   = form_data.get("housing")    or {}
+    e   = form_data.get("employment") or {}
+    hl  = form_data.get("health")     or {}
+    fam = form_data.get("family")     or {}
+    fin = form_data.get("financial")  or {}
+
+    members = fam.get("members") or []
     members_text = ""
     for m in members:
-        members_text += (
+        line = (
             f"  • {m.get('name', '?')} ({m.get('relation', '?')}), "
-            f"ur. {m.get('birth_year', '?')}, "
-            f"dochód: {_fmt(m.get('income_amount', 0))}\n"
+            f"{_age_from_year(m.get('birth_year'))}, "
+            f"dochód: {_fmt(m.get('income_amount', 0))}"
         )
+        if m.get("employment_status"):
+            line += f", status: {m['employment_status']}"
+        if m.get("is_registered_unemployed"):
+            line += ", zarejestrowany w PUP"
+        if m.get("has_unemployment_benefit"):
+            line += f", zasiłek dla bezrobotnych: {_fmt(m.get('unemployment_benefit_amount', 0))}"
+        if m.get("has_disability_certificate"):
+            deg = m.get("disability_degree", "")
+            line += f", niepełnosprawność{' stopień ' + deg if deg else ''}"
+        if m.get("illness_types"):
+            line += f", schorzenia: {m['illness_types']}"
+        if m.get("has_addiction"):
+            atypes = m.get("addiction_types") or []
+            line += f", uzależnienie: {', '.join(atypes) if atypes else 'tak'}"
+        members_text += line + "\n"
     if not members_text:
         members_text = "  (brak danych o innych członkach rodziny)\n"
+
+    selected_ids = fin.get("selected_help_forms") or e.get("selected_help_forms") or []
+
+    # Oblicz szacunkowe kwoty świadczeń (te same reguły co frontend)
+    own_income   = _to_f(p.get("income_amount"))
+    total_income = _to_f(fin.get("total_family_income") or e.get("total_family_income"))
+    income_per_p = _to_f(fin.get("income_per_person")   or e.get("income_per_person"))
+    family_size   = 1 + len(fam.get("members") or [])
+    is_single     = family_size == 1
+    THRESH_SINGLE, THRESH_FAMILY = 776.0, 600.0
+    MAX_STALY, MIN_STALY, MIN_OKRE = 719.0, 30.0, 20.0
+
+    def _staly_amount() -> str:
+        if is_single and own_income > 0:
+            diff = THRESH_SINGLE - own_income
+            if diff <= 0: return ""
+            return f"{max(MIN_STALY, min(MAX_STALY, diff)):.2f} zł/mies."
+        if not is_single and income_per_p > 0:
+            diff = THRESH_FAMILY - income_per_p
+            if diff <= 0: return ""
+            return f"{max(MIN_STALY, min(MAX_STALY, diff)):.2f} zł/mies."
+        return ""
+
+    def _okresowy_amount() -> str:
+        if is_single and own_income > 0:
+            gap = THRESH_SINGLE - own_income
+            if gap <= 0: return ""
+            return f"min. {max(MIN_OKRE, gap * 0.5):.2f} zł/mies. (gmina może przyznać do {gap:.2f} zł)"
+        if not is_single and total_income > 0:
+            gap = THRESH_FAMILY * family_size - total_income
+            if gap <= 0: return ""
+            return f"min. {max(MIN_OKRE, gap * 0.5):.2f} zł/mies. (gmina może przyznać do {gap:.2f} zł)"
+        return ""
+
+    BENEFIT_AMOUNTS = {
+        "zasilek_staly":    _staly_amount(),
+        "zasilek_okresowy": _okresowy_amount(),
+    }
+
+    def _form_line(fid: str) -> str:
+        label = HELP_FORM_LABELS.get(fid, fid)
+        amount = BENEFIT_AMOUNTS.get(fid, "")
+        return f"  • {label}" + (f" — szacowana kwota: {amount}" if amount else "")
+
+    help_forms_text = "\n".join(_form_line(fid) for fid in selected_ids) \
+        or "  (nie określono — opisz potrzeby ogólnie)"
 
     reasons = ", ".join(p.get("help_reasons", [])) or "nie określono"
     person = f"{p.get('first_name', 'N')} {p.get('last_name', 'N')}"
@@ -158,18 +278,24 @@ def build_prompt(form_data: dict, legal_context: str, worker_name: str) -> str:
         (", " + ", ".join(m.get("name", "?") for m in members)) if members else ""
     )
 
+    subject = "rodzina" if len(members) > 0 else "osoba"
+
     return f"""ZADANIE: Sporządź KOMPLETNY rodzinny wywiad środowiskowy na podstawie poniższych danych.
 Wzoruj się na przykładach stylu z instrukcji systemowej — zachowaj zbliżoną długość i strukturę.
 
 ⚠ SKŁAD GOSPODARSTWA DOMOWEGO ({total_household} {'osoba' if total_household == 1 else 'osoby' if total_household in [2,3,4] else 'osób'}): {household_list}
    Liczba ta MUSI być zgodna z treścią pisma — nie pisz "jednoosobowe gospodarstwo" jeśli są inni członkowie.
 
+⚠ PODMIOT GRAMATYCZNY — stosuj KONSEKWENTNIE przez całe pismo:
+   Podmiot: „{subject}"
+   {'Skoro w lokalu zamieszkują wspólnie: ' + household_list + ' — pisz „rodzina zamieszkuje", „rodzina utrzymuje się", „dochody rodziny", „rodzina korzysta" itp. NIGDY nie opisuj sytuacji lokalowej ani finansowej tak, jakby osoba objęta wywiadem mieszkała lub funkcjonowała samotnie.' if len(members) > 0 else 'Osoba prowadzi jednoosobowe gospodarstwo domowe — pisz „osoba zamieszkuje", „osoba utrzymuje się" itp.'}
+
 ━━━ DANE Z WYWIADU ━━━
 
 OSOBA OBJĘTA WYWIADEM:
   Imię i nazwisko: {person}
   PESEL: {_fmt(p.get("pesel"))}
-  Data urodzenia: {_fmt(p.get("birth_date"))}
+  Wiek: {_age_from_date(p.get("birth_date", ""))}  ← W TEKŚCIE PISMA używaj WYŁĄCZNIE wieku (np. „lat 45"), NIGDY daty urodzenia ani rozwinięcia PESEL
   Płeć: {_fmt(p.get("gender"))}
   Stan cywilny: {_fmt(p.get("marital_status"))}
   Adres: {p.get("address_street", "")} {p.get("address_postal_code", "")} {p.get("address_city", "")}
@@ -202,22 +328,20 @@ SYTUACJA ZAWODOWA I FINANSOWA:
   Kwalifikacje: {_fmt(e.get("qualifications"))}
   Dochód łączny rodziny: {_fmt(e.get("total_family_income"))}
   Dochód na osobę: {_fmt(e.get("income_per_person"))}
-  Wydatki miesięczne: {_fmt(e.get("monthly_expenses_total"))}
-    - Czynsz/opłaty: {_fmt(e.get("rent"))}
-    - Energia elektryczna: {_fmt(e.get("electricity"))}
-    - Gaz: {_fmt(e.get("gas_cost"))}
-    - Leki: {_fmt(e.get("medications"))}
-    - Inne: {_fmt(e.get("other_expenses"))}
+  Łączne wydatki miesięczne: {_fmt(fin.get("monthly_expenses_total") or e.get("monthly_expenses_total"))}
   Potrzeby i oczekiwania: {_fmt(e.get("needs_and_expectations"))}
 
 SYTUACJA ZDROWOTNA:
-  Osoby długotrwale chore: {_fmt(hl.get("chronically_ill_persons"))}
+  Osoby długotrwale chore: {_fmt(hl.get("chronically_ill_count") or hl.get("chronically_ill_persons"))}
   Schorzenia: {_fmt(hl.get("illness_types"))}
   Ubezpieczenie zdrowotne: {_fmt(hl.get("has_health_insurance"))}
   Orzeczenie o niepełnosprawności: {_fmt(hl.get("has_disability_certificate"))} | Stopień: {_fmt(hl.get("disability_degree"))}
   Orzeczenie o niezdolności do samodzielnej egzystencji: {_fmt(hl.get("has_incapacity_certificate"))}
-  Uzależnienie: {_fmt(hl.get("has_addiction"))} | Rodzaj: {_fmt(hl.get("addiction_type"))}
+  Uzależnienie: {_fmt(hl.get("has_addiction"))} | Rodzaj: {_fmt(", ".join(hl.get("addiction_types") or []) or hl.get("addiction_type"))}
   Uwagi zdrowotne: {_fmt(hl.get("additional_health_info"))}
+
+WNIOSKOWANE FORMY POMOCY (wymień je WPROST w części wniosków pisma):
+{help_forms_text}
 
 ━━━ PODSTAWA PRAWNA (fragmenty ustaw) ━━━
 {legal_context}
@@ -233,9 +357,11 @@ Zachowaj następującą kolejność treści w akapitach:
 3. Sytuacja zawodowa i źródła dochodu — z kwotami; przepisy cytuj tylko jeśli są w PODSTAWIE PRAWNEJ
 4. Sytuacja zdrowotna — opisz FAKTY z formularza
 5. Sytuacja finansowa — zestawienie dochodów i wydatków z kwotami
-6. Wnioski pracownika socjalnego — opisz potrzeby i wnioskowane formy pomocy; NIE rozstrzygaj o uprawnieniach prawnych
+6. Wnioski pracownika socjalnego — wymień DOSŁOWNIE wszystkie wnioskowane formy pomocy z sekcji WNIOSKOWANE FORMY POMOCY i uzasadnij każdą z nich sytuacją klienta; NIE rozstrzygaj o uprawnieniach (nie pisz "przysługuje" / "nie przysługuje")
 7. Wykaz cytowanych przepisów — tylko te które faktycznie przytoczyłeś w tekście
-8. Podpis: {worker_name}, Pracownik socjalny
+8. Podpis: Pracownik socjalny
+
+SPÓJNOŚĆ PODMIOTU — żelazna zasada: przez całe pismo podmiotem opisującym zamieszkiwanie, dochody i sytuację życiową jest „{subject}". Nie mieszaj form — nie pisz w jednym akapicie „rodzina zamieszkuje", a w następnym „wnioskodawczyni zamieszkuje" lub odwrotnie.
 
 NIE zaczynaj od nagłówka z miejscowością, datą, nazwą ośrodka ani tytułem "RODZINNY WYWIAD ŚRODOWISKOWY". Zacznij od razu od pierwszego akapitu opisowego.
 
@@ -327,10 +453,10 @@ PISMO DO REDAKCJI:
 
 
 @retry(stop=stop_after_attempt(2), wait=wait_exponential(min=3, max=20))
-def generate_document(form_data: dict, legal_context: str, worker_name: str) -> str:
+def generate_document(form_data: dict, legal_context: str) -> str:
     """Haiku generuje treść, Sonnet redaguje język — zwraca gotowe pismo."""
     system_prompt = _build_system_prompt()
-    prompt = build_prompt(form_data, legal_context, worker_name)
+    prompt = build_prompt(form_data, legal_context)
     logger.info(f"Generuję pismo przez {MODEL_GENERATE} (system: {len(system_prompt)} znaków)")
 
     draft_msg = get_anthropic().messages.create(

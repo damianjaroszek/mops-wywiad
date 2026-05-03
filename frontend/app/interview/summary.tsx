@@ -8,6 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { useInterviewStore } from "@/store/interviewStore";
 import { createInterview, generateDocument, healthCheck, saveDraft } from "@/services/api";
+import { useSyncStore } from "@/store/syncStore";
 import {
   HELP_REASONS, APARTMENT_TYPES, HEATING_TYPES, APARTMENT_CONDITION,
   MARITAL_STATUS, EMPLOYMENT_STATUS, DISABILITY_DEGREES,
@@ -31,6 +32,7 @@ function Row({ label, value }: { label: string; value: string }) {
 export default function SummaryScreen() {
   const store = useInterviewStore();
   const { formData, isGenerating, interviewId } = store;
+  const syncStore = useSyncStore();
   const { personal: p, housing: h, employment: e, health: hl, family: fam, financial: fin } = formData;
   const [genStatus, setGenStatus] = useState("");
   const [isSavingDraft, setIsSavingDraft] = useState(false);
@@ -39,12 +41,18 @@ export default function SummaryScreen() {
 
   const handleSaveDraft = async () => {
     setIsSavingDraft(true);
+    syncStore.markSyncing();
     try {
       const saved = await saveDraft(formData, interviewId);
       store.setInterviewId(saved.id);
+      syncStore.markSynced();
       setSnackMsg("Wersja robocza zapisana");
       setSnackVisible(true);
+      setTimeout(() => {
+        if (useSyncStore.getState().status === "synced") syncStore.markIdle();
+      }, 3000);
     } catch (ex: any) {
+      syncStore.markError();
       Alert.alert("Błąd zapisu", ex.message || "Spróbuj ponownie.");
     } finally {
       setIsSavingDraft(false);
@@ -70,7 +78,7 @@ export default function SummaryScreen() {
       setGenStatus("Generuję pismo urzędowe...");
       let interviewIdToUse = interviewId;
       if (!interviewIdToUse) {
-        const interview = await createInterview("—", formData);
+        const interview = await createInterview(formData);
         interviewIdToUse = interview.id;
         store.setInterviewId(interview.id);
       }
@@ -215,11 +223,6 @@ export default function SummaryScreen() {
                   <Row label="Dochód rodziny" value={fin.total_family_income ? `${fin.total_family_income} zł/mies.` : "—"} />
                   <Row label="Dochód na osobę" value={fin.income_per_person ? `${fin.income_per_person} zł/mies.` : "—"} />
                   <Row label="Wydatki łącznie" value={fin.monthly_expenses_total ? `${fin.monthly_expenses_total} zł/mies.` : "—"} />
-                  <Row label="Czynsz" value={fin.rent ? `${fin.rent} zł` : "—"} />
-                  <Row label="Prąd" value={fin.electricity ? `${fin.electricity} zł` : "—"} />
-                  <Row label="Gaz" value={fin.gas_cost ? `${fin.gas_cost} zł` : "—"} />
-                  <Row label="Leki" value={fin.medications ? `${fin.medications} zł` : "—"} />
-                  <Row label="Inne wydatki" value={fin.other_expenses ? `${fin.other_expenses} zł` : "—"} />
                   <Row label="Potrzeby i oczekiwania" value={fin.needs_and_expectations} />
                 </View>
               </List.Accordion>

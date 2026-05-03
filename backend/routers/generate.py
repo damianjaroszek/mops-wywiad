@@ -33,7 +33,6 @@ async def generate_document(
         raise HTTPException(status_code=404, detail="Wywiad nie istnieje.")
     interview = result.data[0]
     form_data = interview["form_data"]
-    worker_name = body.worker_name or interview["worker_name"]
 
     logger.info(f"Generuję pismo dla wywiadu {interview_id}")
 
@@ -44,7 +43,7 @@ async def generate_document(
 
     # Generuj pismo
     try:
-        document = generate_interview_document(form_data, legal_context, worker_name)
+        document = generate_interview_document(form_data, legal_context)
     except Exception as e:
         logger.error(f"Błąd generowania AI: {e}")
         raise HTTPException(

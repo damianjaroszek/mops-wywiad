@@ -10,12 +10,30 @@ export interface FamilyMember {
   id: string;
   name: string;
   birth_year?: number;
+  gender?: string;
+  marital_status?: string;
   relation?: string;
+  // Wykształcenie i zatrudnienie
   education?: string;
-  work_place?: string;
   employment_status?: string;
+  is_registered_unemployed?: boolean | null;
+  has_unemployment_benefit?: boolean | null;
+  unemployment_benefit_amount?: string;
+  qualifications?: string;
+  last_employment?: string;
+  work_place?: string;
+  // Dochody
   income_source?: string;
   income_amount?: number;
+  // Zdrowie
+  has_health_insurance?: boolean | null;
+  illness_types?: string;
+  has_disability_certificate?: boolean | null;
+  disability_degree?: string;
+  has_incapacity_certificate?: boolean | null;
+  has_addiction?: boolean | null;
+  addiction_types?: string[];
+  additional_health_info?: string;
 }
 
 export interface FormData {
@@ -50,15 +68,13 @@ export interface FormData {
   };
   financial: {
     total_family_income: string; income_per_person: string;
-    monthly_expenses_total: string; rent: string; electricity: string;
-    gas_cost: string; medications: string; other_expenses: string;
-    needs_and_expectations: string;
+    monthly_expenses_total: string;
+    needs_and_expectations: string; selected_help_forms: string[];
   };
 }
 
 interface InterviewState {
   formData: FormData;
-  workerName: string;
   currentStep: number;
   interviewId: string | null;
   generatedDocument: string | null;
@@ -73,7 +89,6 @@ interface InterviewState {
   updateEmployment: (data: Partial<FormData["employment"]>) => void;
   updateHealth: (data: Partial<FormData["health"]>) => void;
   updateFinancial: (data: Partial<FormData["financial"]>) => void;
-  setWorkerName: (name: string) => void;
   setCurrentStep: (step: number) => void;
   setInterviewId: (id: string | null) => void;
   setGeneratedDocument: (doc: string, refs: string[]) => void;
@@ -88,13 +103,13 @@ const INIT: FormData = {
   family: { members: [], has_conflicts: null, conflict_description: "", has_domestic_violence: null, violence_description: "", has_childcare_issues: null, childcare_description: "" },
   employment: { employment_status: "", is_registered_unemployed: null, has_unemployment_benefit: null, unemployment_benefit_amount: "", qualifications: "", last_employment: "" },
   health: { chronically_ill_count: "", illness_types: "", has_health_insurance: null, has_disability_certificate: null, disability_degree: "", has_incapacity_certificate: null, has_addiction: null, addiction_types: [], additional_health_info: "" },
-  financial: { total_family_income: "", income_per_person: "", monthly_expenses_total: "", rent: "", electricity: "", gas_cost: "", medications: "", other_expenses: "", needs_and_expectations: "" },
+  financial: { total_family_income: "", income_per_person: "", monthly_expenses_total: "", needs_and_expectations: "", selected_help_forms: [] },
 };
 
 export const useInterviewStore = create<InterviewState>()(
   persist(
     (set) => ({
-      formData: INIT, workerName: "", currentStep: 1, interviewId: null,
+      formData: INIT, currentStep: 1, interviewId: null,
       generatedDocument: null, lawReferences: [], isGenerating: false,
       updatePersonal: (d) => set((s) => ({ formData: { ...s.formData, personal: { ...s.formData.personal, ...d } } })),
       updateHousing: (d) => set((s) => ({ formData: { ...s.formData, housing: { ...s.formData.housing, ...d } } })),
@@ -105,12 +120,11 @@ export const useInterviewStore = create<InterviewState>()(
       updateEmployment: (d) => set((s) => ({ formData: { ...s.formData, employment: { ...s.formData.employment, ...d } } })),
       updateHealth: (d) => set((s) => ({ formData: { ...s.formData, health: { ...s.formData.health, ...d } } })),
       updateFinancial: (d) => set((s) => ({ formData: { ...s.formData, financial: { ...s.formData.financial, ...d } } })),
-      setWorkerName: (name) => set({ workerName: name }),
       setCurrentStep: (step) => set({ currentStep: step }),
       setInterviewId: (id) => set({ interviewId: id }),
       setGeneratedDocument: (doc, refs) => set({ generatedDocument: doc, lawReferences: refs }),
       setIsGenerating: (val) => set({ isGenerating: val }),
-      resetForm: () => set({ formData: INIT, workerName: "", currentStep: 1, interviewId: null, generatedDocument: null, lawReferences: [], isGenerating: false }),
+      resetForm: () => set({ formData: INIT, currentStep: 1, interviewId: null, generatedDocument: null, lawReferences: [], isGenerating: false }),
       loadInterviewData: (id, data) => set(() => ({ interviewId: id, formData: { ...INIT, ...data }, currentStep: 1, generatedDocument: null, lawReferences: [], isGenerating: false })),
     }),
     { name: "mops-interview-storage", storage: createJSONStorage(() => AsyncStorage) }

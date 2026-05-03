@@ -13,8 +13,14 @@ api.interceptors.response.use(
   (error: AxiosError) => {
     const raw = (error.response?.data as any)?.detail;
     const detail = Array.isArray(raw)
-      ? raw.map((e: any) => e.msg || JSON.stringify(e)).join("; ")
-      : raw;
+      ? raw
+          .map((e: any) => {
+            // Include field path (loc) so user sees WHICH field fails, not just the error type
+            const loc = Array.isArray(e.loc) ? e.loc.slice(2).join(" → ") : "";
+            return loc ? `${loc}: ${e.msg}` : (e.msg || JSON.stringify(e));
+          })
+          .join("; ")
+      : (typeof raw === "string" ? raw : null);
     return Promise.reject(new Error(detail || error.message || "Błąd połączenia z serwerem"));
   }
 );
@@ -22,7 +28,7 @@ api.interceptors.response.use(
 export interface Interview {
   id: string; created_at: string; updated_at: string;
   status: "draft" | "completed" | "exported";
-  worker_name: string; form_data: any;
+  form_data: any;
   generated_document?: string; used_law_references?: string[];
 }
 
@@ -57,11 +63,33 @@ function sanitizeFormData(data: any): any {
     other_expenses:              toFloat(d.employment.other_expenses),
   };
 
-  // gender: "kobieta"/"mężczyzna" → "K"/"M"
-  if (d.personal?.gender) {
-    const g = d.personal.gender.toLowerCase();
-    d.personal = { ...d.personal,
-      gender: g === "k" || g === "kobieta" ? "K" : g === "m" || g.startsWith("m\u0119") ? "M" : d.personal.gender,
+  // personal: gender "kobieta"/"mezczyzna" -> "K"/"M", pusty string -> null dla pol z pattern-match
+  if (d.personal) {
+    let gender: string | null = d.personal.gender ?? "";
+    if (gender) {
+      const g = gender.toLowerCase();
+      gender = g === "k" || g === "kobieta" ? "K"
+             : g === "m" || g.startsWith("mę") ? "M"
+             : gender;
+    }
+    d.personal = {
+      ...d.personal,
+      gender:               gender || null,
+      pesel:                d.personal.pesel || null,
+      address_postal_code:  d.personal.address_postal_code || null,
+    };
+  }
+
+  // family members: konwertuj pola numeryczne
+  if (d.family?.members) {
+    d.family = {
+      ...d.family,
+      members: d.family.members.map((m: any) => ({
+        ...m,
+        birth_year:                  toInt(m.birth_year),
+        income_amount:               toFloat(m.income_amount),
+        unemployment_benefit_amount: toFloat(m.unemployment_benefit_amount),
+      })),
     };
   }
 
@@ -69,11 +97,10 @@ function sanitizeFormData(data: any): any {
 }
 
 export const healthCheck = async () => { try { await api.get("/health"); return true; } catch { return false; } };
-export const createInterview = async (workerName: string, formData: any): Promise<Interview> => {
+export const createInterview = async (formData: any): Promise<Interview> => {
   const { financial, employment, ...rest } = formData;
   const merged = sanitizeFormData({ ...rest, employment: { ...employment, ...financial } });
-  const safeWorkerName = (workerName || "").trim().length >= 2 ? workerName.trim() : "Pracownik socjalny";
-  return (await api.post("/interviews", { worker_name: safeWorkerName, form_data: merged })).data;
+  return (await api.post("/interviews", { form_data: merged })).data;
 };
 export const listInterviews = async (page = 1, perPage = 20) => (await api.get("/interviews", { params: { page, per_page: perPage } })).data;
 export const getInterview = async (id: string): Promise<Interview> => (await api.get(`/interviews/${id}`)).data;
@@ -90,12 +117,7 @@ export const reviseDocument = async (
     current_document: currentDocument,
     ...(selectedFragment ? { selected_fragment: selectedFragment } : {}),
   })).data;
-/**
- * Normalizuje form_data z API do formatu store.
- * Obsługuje dwa formaty:
- *  - draft (saveDraft): employment i financial rozdzielone, health ma chronically_ill_count i addiction_types[]
- *  - completed (createInterview): employment+financial scalone, health ma chronically_ill_persons i addiction_type
- */
+
 export function normalizeFormDataForStore(raw: any): any {
   if (!raw) return {};
   const { employment: emp, financial: fin, family, health, ...rest } = raw;
@@ -152,5 +174,6 @@ export const saveDraft = async (formData: any, interviewId?: string | null): Pro
   if (interviewId) {
     return (await api.patch(`/interviews/${interviewId}`, { form_data: formData })).data;
   }
-  return (await api.post("/interviews", { worker_name: "Pracownik socjalny", form_data: formData })).data;
+  // No interviewId = new record; reuse createInterview so sanitization runs
+  return createInterview(formData);
 };

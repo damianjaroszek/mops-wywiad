@@ -35,19 +35,44 @@ function generatePesel(birthYear: number, birthMonth: number, birthDay: number, 
 
 const INCOME_SOURCES = ["Wynagrodzenie za pracę","Emerytura","Renta","Zasiłek dla bezrobotnych","Zasiłek rodzinny","Świadczenie 800+","Alimenty","Dochód z działalności"];
 const WORKPLACES = ["Szkoła Podstawowa nr 3","Urząd Gminy","Sklep spożywczy","Zakład Produkcyjny POLAN","Centrum Handlowe","Dom Pomocy Społecznej","Piekarnia Rodzinna","Budowa – firma zewnętrzna"];
-const FAMILY_RELATION_VALUES = ['malzonek','partner','syn','corka','ojciec','matka','brat','siostra','dziadek','babcia','wnuczek','wnuczka','inny_krewny'];
+const QUALIFICATIONS_LIST = ["Brak kwalifikacji zawodowych","Kurs obsługi komputera","Prawo jazdy kat. B","Kurs spawacza","Kurs fryzjerski","Technik ekonomista","Mechanik samochodowy"];
+const LAST_EMPLOYMENTS = ["Sklep BIEDRONKA Sp. z o.o.","Urząd Gminy w ...","Zakład Produkcyjny POLAN","Restauracja Pod Kasztanem","Firma budowlana - praca sezonowa","Dom Pomocy Społecznej"];
+const EMPLOYMENT_VALUES = ['zatrudniony','bezrobotny','rencista','emeryt','student','nie_pracuje'];
 const EDUCATION_VALUES = ['podstawowe','gimnazjalne','zawodowe','srednie','policealne','wyzsze_licencjat','wyzsze_magister'];
+const MARITAL_VALUES = ['kawaler_panna','zamezna_zonaty','rozwiedziona','wdowa_wdowiec'];
 
 export function generateFakeMember(gender: 'F' | 'M' = 'F') {
   const isF = gender === 'F';
   const firstName = randomFrom(isF ? FIRST_NAMES_F : FIRST_NAMES_M);
   const lastName = randomFrom(LAST_NAMES) + (isF ? 'a' : '');
   const birthYear = randomInt(1940, 2015);
+  const age = new Date().getFullYear() - birthYear;
   const hasIncome = Math.random() > 0.3;
+  const empStatus = age < 18 ? 'student' : randomFrom(EMPLOYMENT_VALUES);
+  const isUnemployed = empStatus === 'bezrobotny';
+  const hasUnempBenefit = isUnemployed && Math.random() > 0.5;
+
   return {
     name: `${firstName} ${lastName}`,
     birth_year: birthYear,
+    gender: isF ? 'K' : 'M',
+    marital_status: age < 16 ? 'kawaler_panna' : randomFrom(MARITAL_VALUES),
+    education: age < 10 ? 'podstawowe' : randomFrom(EDUCATION_VALUES),
+    employment_status: empStatus,
+    is_registered_unemployed: isUnemployed ? Math.random() > 0.4 : null,
+    has_unemployment_benefit: isUnemployed ? hasUnempBenefit : null,
+    unemployment_benefit_amount: hasUnempBenefit ? String(randomInt(700, 1500)) : '',
+    qualifications: Math.random() > 0.4 ? randomFrom(QUALIFICATIONS_LIST) : '',
+    last_employment: empStatus !== 'zatrudniony' && age > 20 ? randomFrom(LAST_EMPLOYMENTS) : '',
+    work_place: empStatus === 'zatrudniony' || empStatus === 'student' ? randomFrom([...WORKPLACES, 'Szkoła Podstawowa nr 7', 'Liceum Ogólnokształcące']) : '',
     income_source: hasIncome ? randomFrom(INCOME_SOURCES) : '',
+    income_amount: hasIncome ? randomInt(400, 3500) : undefined,
+    has_health_insurance: Math.random() > 0.15,
+    illness_types: Math.random() > 0.7 ? randomFrom(['nadciśnienie tętnicze', 'cukrzyca typu 2', 'choroby układu krążenia', 'astma', 'depresja']) : '',
+    has_disability_certificate: Math.random() > 0.85 ? true : null,
+    has_addiction: Math.random() > 0.9 ? true : null,
+    addiction_types: [] as string[],
+    additional_health_info: '',
   };
 }
 

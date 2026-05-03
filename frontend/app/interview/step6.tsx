@@ -1,28 +1,26 @@
 /**
  * Krok 6 — Dochody i wydatki
  */
-import React from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { View, ScrollView, StyleSheet, Text, TouchableOpacity, KeyboardAvoidingView, Platform } from "react-native";
+import { useScrollGuard } from "@/hooks/useScrollGuard";
+import ScrollEndBanner from "@/components/ui/ScrollEndBanner";
 import { Button } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import { HELP_FORMS, suggestHelpForms, calculateBenefits, THRESHOLD_SINGLE, THRESHOLD_FAMILY } from "@/constants/helpForms";
 import { useInterviewStore } from "@/store/interviewStore";
 import { colors, spacing, fontSize } from "@/constants/theme";
 import { cs } from "@/constants/commonStyles";
-import FormField from "@/components/ui/FormField";
+import FormField, { FormFieldRef } from "@/components/ui/FormField";
 import StepHeader from "@/components/ui/StepHeader";
-
-const EXPENSE_FIELDS: { key: keyof ReturnType<typeof useInterviewStore>["formData"]["financial"]; label: string }[] = [
-  { key: "rent", label: "Czynsz i opłaty mieszkaniowe" },
-  { key: "electricity", label: "Energia elektryczna" },
-  { key: "gas_cost", label: "Gaz" },
-  { key: "medications", label: "Leki i leczenie" },
-  { key: "other_expenses", label: "Inne wydatki" },
-];
+import ScanSectionButton from "@/components/ui/ScanSectionButton";
 
 export default function Step6() {
   const store = useInterviewStore();
-  const fin = store.formData.financial;
+  const { scrollRef, isAtBottom, scrollProps, tryNext } = useScrollGuard();
+
+  const fin     = store.formData.financial;
   const members = store.formData.family.members;
   const personal = store.formData.personal;
 
@@ -35,6 +33,22 @@ export default function Step6() {
   const totalCount = (mainPersonName ? 1 : 0) + members.length;
   const autoPerPerson = totalCount > 0 ? autoIncome / totalCount : 0;
 
+  const suggested  = useMemo(() => suggestHelpForms(store.formData),   [store.formData]);
+  const benefits   = useMemo(() => calculateBenefits(store.formData),  [store.formData]);
+
+  useEffect(() => {
+    if ((fin.selected_help_forms ?? []).length === 0 && suggested.length > 0) {
+      store.updateFinancial({ selected_help_forms: suggested });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const toggleHelpForm = (id: string) => {
+    const current = fin.selected_help_forms ?? [];
+    const next = current.includes(id) ? current.filter((f) => f !== id) : [...current, id];
+    store.updateFinancial({ selected_help_forms: next });
+  };
+
   const applyAutoIncome = () => {
     store.updateFinancial({
       total_family_income: autoIncome > 0 ? autoIncome.toFixed(2) : "",
@@ -42,20 +56,29 @@ export default function Step6() {
     });
   };
 
-  const calcTotal = () => {
-    const sum = EXPENSE_FIELDS.reduce((acc, { key }) => {
-      return acc + (parseFloat(fin[key] as string) || 0);
-    }, 0);
-    return sum > 0 ? sum.toFixed(2) : "";
+  const incomeRef = useRef<FormFieldRef>(null);
+  const [incomeError, setIncomeError] = useState(false);
+
+  const handleScanApply = (data: Record<string, any>) => {
+    const toStr = (v: any) => (v != null && v !== "" ? String(v) : "");
+    store.updateFinancial({
+      total_family_income:    toStr(data.total_family_income)    || fin.total_family_income,
+      income_per_person:      toStr(data.income_per_person)      || fin.income_per_person,
+      monthly_expenses_total: toStr(data.monthly_expenses_total) || fin.monthly_expenses_total,
+      needs_and_expectations: toStr(data.needs_and_expectations) || fin.needs_and_expectations,
+    });
   };
 
   const handleNext = () => {
-    const total = calcTotal();
-    if (total && !fin.monthly_expenses_total) {
-      store.updateFinancial({ monthly_expenses_total: total });
+    if (!fin.total_family_income) {
+      setIncomeError(true);
+      incomeRef.current?.focus();
+      return;
     }
-    store.setCurrentStep(7);
-    router.push("/interview/summary");
+    tryNext(() => {
+      store.setCurrentStep(7);
+      router.push("/interview/summary");
+    });
   };
 
   return (
@@ -63,8 +86,9 @@ export default function Step6() {
       <StepHeader step={6} />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-        <ScrollView contentContainerStyle={cs.scroll} keyboardShouldPersistTaps="handled">
+        <ScrollView ref={scrollRef} {...scrollProps} contentContainerStyle={cs.scroll} keyboardShouldPersistTaps="handled">
         <Text style={cs.title}>Dochody i wydatki</Text>
+        <ScanSectionButton step={6} onApply={handleScanApply} />
 
         <View style={cs.card}>
           <Text style={cs.cardTitle}>Dochody rodziny</Text>
@@ -116,9 +140,15 @@ export default function Step6() {
           )}
 
           <FormField
+            ref={incomeRef}
             label="Łączny dochód rodziny (zł/mies.)"
+            required
+            error={incomeError}
             value={fin.total_family_income}
-            onChangeText={(v) => store.updateFinancial({ total_family_income: v.replace(/[^0-9.,]/g, "") })}
+            onChangeText={(v) => {
+              store.updateFinancial({ total_family_income: v.replace(/[^0-9.,]/g, "") });
+              if (incomeError) setIncomeError(false);
+            }}
             keyboardType="numeric"
             placeholder="0.00"
             style={{ marginTop: spacing.sm }}
@@ -134,31 +164,12 @@ export default function Step6() {
 
         <View style={cs.card}>
           <Text style={cs.cardTitle}>Miesięczne wydatki</Text>
-          {EXPENSE_FIELDS.map(({ key, label }) => (
-            <FormField
-              key={key}
-              label={`${label} (zł)`}
-              value={fin[key] as string}
-              onChangeText={(v) => store.updateFinancial({ [key]: v.replace(/[^0-9.,]/g, "") } as any)}
-              keyboardType="numeric"
-              placeholder="0.00"
-            />
-          ))}
-
-          {calcTotal() ? (
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Suma wydatków:</Text>
-              <Text style={styles.totalValue}>{calcTotal()} zł</Text>
-            </View>
-          ) : null}
-
           <FormField
-            label="Łączne wydatki miesięczne (zł) — opcjonalnie nadpisz"
+            label="Łączne wydatki miesięczne (zł)"
             value={fin.monthly_expenses_total}
             onChangeText={(v) => store.updateFinancial({ monthly_expenses_total: v.replace(/[^0-9.,]/g, "") })}
             keyboardType="numeric"
-            style={{ marginTop: spacing.sm }}
-            placeholder={calcTotal() || "0.00"}
+            placeholder="0.00"
           />
         </View>
 
@@ -174,6 +185,91 @@ export default function Step6() {
           />
         </View>
 
+        {/* Wnioskowane formy pomocy */}
+        <View style={cs.card}>
+          <Text style={cs.cardTitle}>Wnioskowane formy pomocy</Text>
+
+          {/* Info o kryterium dochodowym */}
+          {fin.income_per_person ? (
+            <View style={styles.thresholdBox}>
+              <Text style={styles.thresholdLabel}>Kryterium dochodowe 2024</Text>
+              <Text style={styles.thresholdRow}>
+                Osoba samotna: <Text style={styles.thresholdVal}>{THRESHOLD_SINGLE} zł/mies.</Text>
+                {"   "}Rodzina: <Text style={styles.thresholdVal}>{THRESHOLD_FAMILY} zł/os.</Text>
+              </Text>
+              <Text style={styles.thresholdRow}>
+                Dochód na osobę:{" "}
+                <Text style={[
+                  styles.thresholdVal,
+                  parseFloat(fin.income_per_person) < THRESHOLD_FAMILY
+                    ? styles.thresholdBelow
+                    : styles.thresholdAbove,
+                ]}>
+                  {parseFloat(fin.income_per_person).toFixed(2)} zł
+                  {parseFloat(fin.income_per_person) < THRESHOLD_FAMILY
+                    ? "  ✓ poniżej kryterium"
+                    : "  ✗ powyżej kryterium"}
+                </Text>
+              </Text>
+            </View>
+          ) : (
+            <Text style={styles.thresholdNote}>
+              Uzupełnij dochód na osobę (wyżej) — wyświetlimy automatyczne sugestie.
+            </Text>
+          )}
+
+          <Text style={[cs.fieldLabel, { marginTop: spacing.md }]}>
+            Zaznacz formy pomocy do uwzględnienia w piśmie:
+          </Text>
+          {HELP_FORMS.map((form) => {
+            const selected    = (fin.selected_help_forms ?? []).includes(form.id);
+            const isSuggested = suggested.includes(form.id);
+            const calc        = (benefits as any)[form.id] as import("@/constants/helpForms").BenefitAmount | undefined;
+
+            return (
+              <TouchableOpacity
+                key={form.id}
+                style={[styles.formRow, selected && styles.formRowSelected]}
+                onPress={() => toggleHelpForm(form.id)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
+                  {selected && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={styles.formLabelRow}>
+                    <Text style={[styles.formLabel, selected && styles.formLabelSelected]}>
+                      {form.label}
+                    </Text>
+                    {isSuggested && (
+                      <View style={styles.suggestedBadge}>
+                        <Text style={styles.suggestedBadgeText}>sugerowane</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.formDescription}>{form.description}</Text>
+                  <Text style={styles.formLaw}>{form.lawBasis}</Text>
+
+                  {calc && !calc.isAboveThreshold && (
+                    <View style={styles.calcBox}>
+                      <Text style={styles.calcAmount}>
+                        ~{calc.amount.toFixed(2).replace(".", ",")} zł/mies.
+                      </Text>
+                      <Text style={styles.calcFormula}>{calc.formula}</Text>
+                      {calc.note && <Text style={styles.calcNote}>{calc.note}</Text>}
+                    </View>
+                  )}
+                  {calc?.isAboveThreshold && (
+                    <View style={styles.calcBoxAbove}>
+                      <Text style={styles.calcAboveText}>Dochód powyżej kryterium — {calc.formula}</Text>
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
         <View style={styles.infoBox}>
           <Text style={styles.infoText}>
             Po naciśnięciu „Dalej" przejdziesz do podsumowania. Sprawdź dane i wygeneruj pismo urzędowe.
@@ -181,6 +277,7 @@ export default function Step6() {
         </View>
         </ScrollView>
 
+        <ScrollEndBanner visible={!isAtBottom} />
         <View style={cs.footer}>
           <Button mode="contained" onPress={handleNext} style={cs.nextBtn} contentStyle={{ paddingVertical: 8 }} icon="file-check">
             Przejdź do podsumowania
@@ -192,9 +289,6 @@ export default function Step6() {
 }
 
 const styles = StyleSheet.create({
-  totalRow:               { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: colors.primaryLight, padding: spacing.md, borderRadius: 8, marginBottom: spacing.sm },
-  totalLabel:             { fontSize: fontSize.md, fontWeight: "600", color: colors.primary },
-  totalValue:             { fontSize: fontSize.lg, fontWeight: "700", color: colors.primary },
   autoIncomeBox:          { backgroundColor: colors.primaryLight, borderRadius: 8, padding: spacing.sm, marginBottom: spacing.sm },
   autoIncomeTitle:        { fontSize: fontSize.xs, fontWeight: "600", color: colors.secondary, marginBottom: spacing.xs, textTransform: "uppercase" },
   autoIncomeRow:          { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 3 },
@@ -213,4 +307,35 @@ const styles = StyleSheet.create({
   noMembersNote:          { fontSize: fontSize.sm, color: colors.text.disabled, fontStyle: "italic", marginBottom: spacing.sm },
   infoBox:                { backgroundColor: colors.primaryLight, padding: spacing.md, borderRadius: 8, marginBottom: spacing.md },
   infoText:               { fontSize: fontSize.sm, color: colors.secondary, lineHeight: 20 },
+
+  // Kryterium dochodowe
+  thresholdBox:           { backgroundColor: "#F1F8E9", borderRadius: 8, padding: spacing.sm, marginBottom: spacing.sm, borderWidth: 1, borderColor: "#C5E1A5" },
+  thresholdLabel:         { fontSize: fontSize.xs, fontWeight: "700", color: colors.secondary, textTransform: "uppercase", marginBottom: spacing.xs },
+  thresholdRow:           { fontSize: fontSize.sm, color: colors.text.primary, marginBottom: 2 },
+  thresholdVal:           { fontWeight: "700" },
+  thresholdBelow:         { color: "#2E7D32" },
+  thresholdAbove:         { color: colors.warning },
+  thresholdNote:          { fontSize: fontSize.sm, color: colors.text.disabled, fontStyle: "italic", marginBottom: spacing.sm },
+
+  // Lista form pomocy
+  formRow:                { flexDirection: "row", alignItems: "flex-start", paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border, gap: spacing.sm },
+  formRowSelected:        { backgroundColor: "#F3F8FF" },
+  checkbox:               { width: 22, height: 22, borderRadius: 4, borderWidth: 2, borderColor: colors.border, alignItems: "center", justifyContent: "center", marginTop: 2, flexShrink: 0 },
+  checkboxSelected:       { backgroundColor: colors.primary, borderColor: colors.primary },
+  checkmark:              { color: "#fff", fontSize: 13, fontWeight: "700" },
+  formLabelRow:           { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6, marginBottom: 2 },
+  formLabel:              { fontSize: fontSize.sm, fontWeight: "600", color: colors.text.secondary },
+  formLabelSelected:      { color: colors.primary },
+  formDescription:        { fontSize: fontSize.xs, color: colors.text.secondary, lineHeight: 17 },
+  formLaw:                { fontSize: 10, color: colors.text.disabled, marginTop: 2 },
+  suggestedBadge:         { backgroundColor: "#E8F5E9", borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1, borderWidth: 1, borderColor: "#A5D6A7" },
+  suggestedBadgeText:     { fontSize: 10, fontWeight: "700", color: "#2E7D32" },
+
+  // Blok z wyliczoną kwotą świadczenia
+  calcBox:                { marginTop: spacing.xs, backgroundColor: "#E8F5E9", borderRadius: 6, padding: spacing.xs, borderLeftWidth: 3, borderLeftColor: "#2E7D32" },
+  calcAmount:             { fontSize: fontSize.md, fontWeight: "700", color: "#1B5E20" },
+  calcFormula:            { fontSize: fontSize.xs, color: "#388E3C", marginTop: 1 },
+  calcNote:               { fontSize: 10, color: colors.text.disabled, marginTop: 1, fontStyle: "italic" },
+  calcBoxAbove:           { marginTop: spacing.xs, backgroundColor: "#FFF3E0", borderRadius: 6, padding: spacing.xs, borderLeftWidth: 3, borderLeftColor: colors.warning },
+  calcAboveText:          { fontSize: fontSize.xs, color: colors.warning },
 });

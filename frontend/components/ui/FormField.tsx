@@ -1,15 +1,14 @@
-/**
- * FormField — pole formularza z etykietą nad inputem (nie pływającą).
- * Eliminuje "notch" i przekreśloną etykietę z MD3 outlined mode.
- */
-import React from "react";
+import React, { useRef, useImperativeHandle } from "react";
 import { View, Text, StyleSheet, TextInputProps } from "react-native";
 import { TextInput } from "react-native-paper";
 import { colors, spacing, fontSize } from "@/constants/theme";
 
+export type FormFieldRef = { focus: () => void };
+
 interface Props {
   label: string;
   required?: boolean;
+  error?: boolean;
   value: string;
   onChangeText: (text: string) => void;
   placeholder?: string;
@@ -21,26 +20,24 @@ interface Props {
   style?: object;
 }
 
-export default function FormField({
-  label,
-  required,
-  value,
-  onChangeText,
-  placeholder,
-  keyboardType,
-  multiline,
-  numberOfLines = 1,
-  maxLength,
-  secureTextEntry,
-  style,
-}: Props) {
+const FormField = React.forwardRef<FormFieldRef, Props>(function FormField(
+  {
+    label, required, error, value, onChangeText, placeholder,
+    keyboardType, multiline, numberOfLines = 1, maxLength, secureTextEntry, style,
+  },
+  ref,
+) {
+  const inputRef = useRef<any>(null);
+  useImperativeHandle(ref, () => ({ focus: () => inputRef.current?.focus() }));
+
   return (
     <View style={[styles.wrapper, style]}>
-      <Text style={styles.label}>
+      <Text style={[styles.label, error && styles.labelError]}>
         {label}
         {required && <Text style={styles.required}> *</Text>}
       </Text>
       <TextInput
+        ref={inputRef}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
@@ -51,15 +48,18 @@ export default function FormField({
         maxLength={maxLength}
         secureTextEntry={secureTextEntry}
         mode="flat"
-        underlineColor={colors.border}
-        activeUnderlineColor={colors.primary}
+        underlineColor={error ? colors.error : colors.border}
+        activeUnderlineColor={error ? colors.error : colors.primary}
         style={styles.input}
         contentStyle={styles.content}
         dense={!multiline}
       />
+      {error && <Text style={styles.errorText}>To pole jest wymagane</Text>}
     </View>
   );
-}
+});
+
+export default FormField;
 
 const styles = StyleSheet.create({
   wrapper: {
@@ -70,6 +70,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.text.secondary,
     marginBottom: 6,
+  },
+  labelError: {
+    color: colors.error,
   },
   required: {
     color: colors.error,
@@ -84,5 +87,10 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     paddingHorizontal: 0,
     minHeight: 44,
+  },
+  errorText: {
+    fontSize: 11,
+    color: colors.error,
+    marginTop: 2,
   },
 });

@@ -48,11 +48,30 @@ class HousingData(BaseModel):
 class FamilyMember(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     birth_year: Optional[int] = Field(None, ge=1900, le=2030)
+    gender: Optional[str] = None
+    marital_status: Optional[str] = None
     relation: Optional[str] = None
+    # Wykształcenie i zatrudnienie
     education: Optional[str] = None
+    employment_status: Optional[str] = None
+    is_registered_unemployed: Optional[bool] = None
+    has_unemployment_benefit: Optional[bool] = None
+    unemployment_benefit_amount: Optional[float] = Field(None, ge=0)
+    qualifications: Optional[str] = Field(None, max_length=1000)
+    last_employment: Optional[str] = Field(None, max_length=500)
     work_place: Optional[str] = None
+    # Dochody
     income_source: Optional[str] = None
     income_amount: Optional[float] = Field(None, ge=0)
+    # Zdrowie
+    has_health_insurance: Optional[bool] = None
+    illness_types: Optional[str] = Field(None, max_length=1000)
+    has_disability_certificate: Optional[bool] = None
+    disability_degree: Optional[str] = None
+    has_incapacity_certificate: Optional[bool] = None
+    has_addiction: Optional[bool] = None
+    addiction_types: Optional[List[str]] = None
+    additional_health_info: Optional[str] = Field(None, max_length=2000)
 
 
 class FamilyData(BaseModel):
@@ -82,17 +101,18 @@ class EmploymentData(BaseModel):
     medications: Optional[float] = Field(None, ge=0)
     other_expenses: Optional[float] = Field(None, ge=0)
     needs_and_expectations: Optional[str] = Field(None, max_length=3000)
+    selected_help_forms: Optional[List[str]] = None
 
 
 class HealthData(BaseModel):
-    chronically_ill_persons: Optional[str] = Field(None, max_length=1000)
+    chronically_ill_count: Optional[str] = Field(None, max_length=1000)
     illness_types: Optional[str] = Field(None, max_length=1000)
     has_health_insurance: Optional[bool] = None
     has_disability_certificate: Optional[bool] = None
     disability_degree: Optional[str] = None
     has_incapacity_certificate: Optional[bool] = None
     has_addiction: Optional[bool] = None
-    addiction_type: Optional[str] = None
+    addiction_types: Optional[List[str]] = None
     additional_health_info: Optional[str] = Field(None, max_length=2000)
 
 
@@ -108,24 +128,16 @@ class FormData(BaseModel):
 # ─── Żądania / odpowiedzi API ────────────────────────────────────────────────
 
 class CreateInterviewRequest(BaseModel):
-    worker_name: str = Field(..., min_length=2, max_length=200)
     form_data: FormData
-
-    @field_validator("worker_name", mode="before")
-    @classmethod
-    def strip_worker_name(cls, v: str) -> str:
-        return v.strip() if isinstance(v, str) else v
 
 
 class UpdateInterviewRequest(BaseModel):
-    worker_name: Optional[str] = Field(None, min_length=2, max_length=200)
     form_data: Optional[dict] = None
     status: Optional[str] = Field(None, pattern=r"^(draft|completed|exported)$")
 
 
 class GenerateRequest(BaseModel):
-    """Opcjonalne nadpisanie danych przy generowaniu"""
-    worker_name: Optional[str] = Field(None, min_length=2, max_length=200)
+    pass
 
 
 class InterviewResponse(BaseModel):
@@ -135,7 +147,6 @@ class InterviewResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     status: str
-    worker_name: str
     form_data: dict
     generated_document: Optional[str] = None
     used_law_references: Optional[List[str]] = None

@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Import routerów PO załadowaniu .env
-from routers import health, interviews, generate
+from routers import health, interviews, generate, scan
 
 logging.basicConfig(
     level=getattr(logging, os.getenv("LOG_LEVEL", "INFO")),
@@ -81,6 +81,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(health.router, prefix="/api/v1", tags=["health"])
 app.include_router(interviews.router, prefix="/api/v1", tags=["interviews"])
 app.include_router(generate.router, prefix="/api/v1", tags=["generate"])
+app.include_router(scan.router, prefix="/api/v1", tags=["scan"])
 
 
 if __name__ == "__main__":

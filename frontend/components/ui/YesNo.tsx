@@ -3,8 +3,12 @@
  * Eksportuje też typ TriBool używany w krokach formularza.
  */
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, LayoutAnimation, Platform, UIManager } from "react-native";
 import { colors, spacing, fontSize } from "@/constants/theme";
+
+if (Platform.OS === "android") {
+  UIManager.setLayoutAnimationEnabledExperimental?.(true);
+}
 
 export type TriBool = boolean | null;
 
@@ -14,17 +18,22 @@ interface Props {
 }
 
 export default function YesNo({ value, onChange }: Props) {
+  const handle = (v: boolean) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    onChange(v);
+  };
+
   return (
     <View style={styles.row}>
       <TouchableOpacity
         style={[styles.chip, value === true && styles.chipYes]}
-        onPress={() => onChange(true)}
+        onPress={() => handle(true)}
       >
         <Text style={[styles.text, value === true && styles.textYes]}>✓ Tak</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={[styles.chip, value === false && styles.chipNo]}
-        onPress={() => onChange(false)}
+        onPress={() => handle(false)}
       >
         <Text style={[styles.text, value === false && styles.textNo]}>✗ Nie</Text>
       </TouchableOpacity>
